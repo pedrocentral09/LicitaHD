@@ -19,7 +19,7 @@ export async function GET() {
     });
 
     // Filter out organizations that have no OCs waiting for delivery
-    const activeOrgs = organizations.filter((org) => org.purchaseOrders.length > 0);
+    const activeOrgs = organizations.filter((org: any) => org.purchaseOrders.length > 0);
 
     return NextResponse.json(activeOrgs);
   } catch (error) {
