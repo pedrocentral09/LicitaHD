@@ -24,7 +24,7 @@ export async function PATCH(
       where: { purchaseOrderId: item.purchaseOrderId },
     });
 
-    const allReceived = allItemsInOc.length > 0 && allItemsInOc.every(i => i.receivedAt !== null);
+    const allReceived = allItemsInOc.length > 0 && allItemsInOc.every((i: any) => i.receivedAt !== null);
 
     if (allReceived) {
       await prisma.purchaseOrder.update({
