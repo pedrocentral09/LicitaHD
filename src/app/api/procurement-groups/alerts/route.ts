@@ -14,7 +14,7 @@ export async function GET() {
   });
 
   // Filter items with low margin (< 5%)
-  const alerts = items.filter((item) => {
+  const alerts = items.filter((item: any) => {
     if (!item.costPrice) return false;
     const margin = ((item.unitPriceReturn - item.costPrice) / item.unitPriceReturn) * 100;
     return margin < 5;
