@@ -99,7 +99,7 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 p-3">
-        {navItems.filter(item => item.roles.includes(userRole)).map((item) => {
+        {navItems.filter((item: any) => item.roles.includes(userRole)).map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link

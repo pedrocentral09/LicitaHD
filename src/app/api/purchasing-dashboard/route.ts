@@ -36,11 +36,11 @@ export async function GET() {
     // 1. Map to remove procurement groups that have 0 valid items
     // 2. Filter out organizations that have no active OCs or groups
     const activeOrgs = organizations
-      .map((org) => ({
+      .map((org: any) => ({
         ...org,
-        procurementGroups: org.procurementGroups.filter((g) => g.items.length > 0)
+        procurementGroups: org.procurementGroups.filter((g: any) => g.items.length > 0)
       }))
-      .filter((org) => org.purchaseOrders.length > 0 || org.procurementGroups.length > 0);
+      .filter((org: any) => org.purchaseOrders.length > 0 || org.procurementGroups.length > 0);
 
     return NextResponse.json(activeOrgs);
   } catch (error) {
