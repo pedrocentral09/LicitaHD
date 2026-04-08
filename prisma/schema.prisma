@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// -------------------------------------------------------------
+// Módulo: Autenticação (Basic Auth/Audit)
+// -------------------------------------------------------------
+enum UserRole {
+  GOD
+  OPERATOR
+  BUYER
+  LOGISTICS
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  username     String   @unique
+  email        String?  @unique
+  passwordHash String
+  role         UserRole @default(OPERATOR)
+  createdAt    DateTime @default(now())
+
+  validatedOrders PurchaseOrder[] @relation("UserValidation")
+}
+
+// -------------------------------------------------------------
+// Módulo: Organizações (Prefeituras/Órgãos)
+// -------------------------------------------------------------
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  cnpj      String?  @unique
+  createdAt DateTime @default(now())
+
+  purchaseOrders    PurchaseOrder[]
+  procurementGroups ProcurementGroup[]
+}
+
+// -------------------------------------------------------------
+// Módulo: Pedidos (Ordens de Compra Físicas / Empenhos)
+// -------------------------------------------------------------
+model PurchaseOrder {
+  id             String      @id @default(uuid())
+  documentNumber String
+  status         OrderStatus @default(DRAFT)
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  validatorId String?
+  validator   User?   @relation("UserValidation", fields: [validatorId], references: [id])
+
+  // Rastreio em Tela
+  operatorName String?
+
+  issuedAt  DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  items PurchaseItem[]
+}
+
+enum OrderStatus {
+  DRAFT
+  VALIDATED
+  QUOTED
+  DELIVERED
+  CANCELED
+}
+
+// -------------------------------------------------------------
+// Módulo: Item de Compra
+// -------------------------------------------------------------
+model PurchaseItem {
+  id              String @id @default(uuid())
+  description     String
+  quantity        Float
+  unitPriceReturn Float
+
+  // Campos de precificação e entrega
+  costPrice        Float?
+  conversionFactor Float     @default(1)
+  expectedDelivery DateTime?
+  notes            String?
+
+  // Campos de origem e titularidade
+  buyingLocation   String?
+  ownership        String?
+
+  // Entrega Granular
+  receivedAt       DateTime?
+
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+
+  procurementId    String?
+  procurementGroup ProcurementGroup? @relation(fields: [procurementId], references: [id])
+}
+
+// -------------------------------------------------------------
+// Módulo: Cotação/Agrupamento (O "Merge")
+// -------------------------------------------------------------
+model ProcurementGroup {
+  id          String @id @default(uuid())
+  description String
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  items PurchaseItem[]
+
+  @@unique([organizationId, description])
+}
