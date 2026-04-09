@@ -24,6 +24,7 @@ export function IngestaoUploader() {
   const [result, setResult] = useState<ExtractionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCreatingOrg, setIsCreatingOrg] = useState(false);
   const [saved, setSaved] = useState(false);
   const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([]);
   const [selectedOrgId, setSelectedOrgId] = useState("");
@@ -83,6 +84,29 @@ export function IngestaoUploader() {
     if (!result) return;
     const newItems = result.items.filter((_, i) => i !== index);
     setResult({ ...result, items: newItems });
+  }
+
+  async function handleCreateOrg() {
+    if (!orgFilter.trim() || isCreatingOrg) return;
+    setIsCreatingOrg(true);
+    try {
+      const payload = { name: orgFilter.trim() };
+      const res = await fetch("/api/organizations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const newOrg = await res.json();
+        setOrgs([newOrg, ...orgs]);
+        setSelectedOrgId(newOrg.id);
+        setOrgFilter(newOrg.name);
+      }
+    } catch (e) {
+      console.error("Erro ao criar órgão:", e);
+    } finally {
+      setIsCreatingOrg(false);
+    }
   }
 
   async function handleExtract() {
@@ -269,6 +293,20 @@ export function IngestaoUploader() {
                     ))}
                   </datalist>
                 </div>
+                {!selectedOrgId && orgFilter.trim().length > 0 && (
+                  <button
+                    onClick={handleCreateOrg}
+                    disabled={isCreatingOrg}
+                    className="mt-1.5 w-full flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded border border-indigo-200 transition-colors"
+                  >
+                    {isCreatingOrg ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Plus className="w-3.5 h-3.5" />
+                    )}
+                    Cadastrar "{orgFilter}"
+                  </button>
+                )}
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-zinc-500">
