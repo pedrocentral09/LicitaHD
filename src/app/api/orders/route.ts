@@ -15,6 +15,22 @@ export async function GET() {
 export async function POST(req: Request) {
   const body = await req.json();
 
+  if (body.documentNumber && body.documentNumber.trim() !== "") {
+    const existingOrder = await prisma.purchaseOrder.findFirst({
+      where: {
+        organizationId: body.organizationId,
+        documentNumber: body.documentNumber.trim(),
+      },
+    });
+
+    if (existingOrder) {
+      return NextResponse.json(
+        { error: `Ordem de Fornecimento Duplicada! Já existe uma OF registrada com o número '${body.documentNumber}' para este órgão.` },
+        { status: 409 }
+      );
+    }
+  }
+
   const order = await prisma.purchaseOrder.create({
     data: {
       documentNumber: body.documentNumber,

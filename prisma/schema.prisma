@@ -63,6 +63,8 @@ model PurchaseOrder {
   updatedAt DateTime  @updatedAt
 
   items PurchaseItem[]
+
+  @@unique([organizationId, documentNumber])
 }
 
 enum OrderStatus {
