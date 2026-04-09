@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { Upload, FileText, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { Upload, FileText, CheckCircle2, AlertCircle, Loader2, Plus, Trash2 } from "lucide-react";
 
 interface ExtractedItem {
   description: string;
@@ -67,6 +67,20 @@ export function IngestaoUploader() {
     if (!result) return;
     const newItems = [...result.items];
     newItems[index] = { ...newItems[index], [field]: value };
+    setResult({ ...result, items: newItems });
+  }
+
+  function handleAddItem() {
+    if (!result) return;
+    setResult({
+      ...result,
+      items: [...result.items, { description: "", quantity: 1, unitPriceReturn: 0 }]
+    });
+  }
+
+  function handleRemoveItem(index: number) {
+    if (!result) return;
+    const newItems = result.items.filter((_, i) => i !== index);
     setResult({ ...result, items: newItems });
   }
 
@@ -283,9 +297,18 @@ export function IngestaoUploader() {
 
             {/* Items Table */}
             <div>
-              <label className="mb-2 block text-xs font-medium text-zinc-500">
-                Itens Extraídos ({result.items.length})
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-medium text-zinc-500">
+                  Itens Extraídos ({result.items.length})
+                </label>
+                <button
+                  onClick={handleAddItem}
+                  className="flex items-center gap-1.5 px-3 py-1 bg-zinc-100 hover:bg-indigo-50 border border-zinc-200 hover:border-indigo-200 text-zinc-600 hover:text-indigo-600 rounded-md text-xs font-medium transition-colors"
+                >
+                  <Plus className="w-3 h-3" />
+                  Adicionar Item
+                </button>
+              </div>
               <div className="overflow-hidden rounded-lg border border-zinc-200">
                 <table className="w-full text-sm">
                   <thead>
@@ -305,6 +328,7 @@ export function IngestaoUploader() {
                       <th className="px-4 py-2.5 text-right text-xs font-medium text-zinc-500">
                         Total (R$)
                       </th>
+                      <th className="px-2 py-2.5 w-10"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100">
@@ -344,6 +368,15 @@ export function IngestaoUploader() {
                             "pt-BR",
                             { minimumFractionDigits: 2 }
                           )}
+                        </td>
+                        <td className="px-2 py-2.5 text-center">
+                          <button
+                            onClick={() => handleRemoveItem(idx)}
+                            className="p-1.5 hover:text-red-600 hover:bg-red-50 text-zinc-400 rounded transition-colors"
+                            title="Remover Item"
+                          >
+                            <Trash2 className="w-4 h-4 mx-auto" />
+                          </button>
                         </td>
                       </tr>
                     ))}
