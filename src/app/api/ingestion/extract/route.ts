@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { extractPurchaseOrderFromPDF } from "@/lib/openai";
+import { extractPurchaseOrderFromPDF } from "@/lib/gemini";
 
 export async function POST(req: Request) {
   try {
@@ -46,24 +46,17 @@ export async function POST(req: Request) {
       error instanceof Error ? error.message : "Erro interno na extração";
 
     // Detectar erros específicos da API
-    if (message.includes("401") || message.includes("Incorrect API key")) {
+    if (message.includes("401") || message.includes("API key not valid")) {
       return NextResponse.json(
-        { error: "API key da OpenAI inválida. Verifique o .env." },
+        { error: "API key do Gemini inválida. Verifique o .env." },
         { status: 401 }
       );
     }
 
-    if (message.includes("429") || message.includes("rate limit")) {
+    if (message.includes("429") || message.includes("rate limit") || message.includes("Quota exceeded")) {
       return NextResponse.json(
-        { error: "Limite de requisições da OpenAI atingido. Tente em 1 minuto." },
+        { error: "Limite de requisições do Gemini atingido. Tente em 1 minuto." },
         { status: 429 }
-      );
-    }
-
-    if (message.includes("insufficient_quota")) {
-      return NextResponse.json(
-        { error: "Créditos da OpenAI esgotados. Verifique seu billing." },
-        { status: 402 }
       );
     }
 
