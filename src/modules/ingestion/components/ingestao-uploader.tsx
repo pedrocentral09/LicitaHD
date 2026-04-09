@@ -215,7 +215,7 @@ export function IngestaoUploader() {
 
           <div className="p-5 space-y-4">
             {/* Org selection */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-zinc-500">
                   Órgão Detectado pela IA
@@ -252,6 +252,17 @@ export function IngestaoUploader() {
                   type="text"
                   value={result.documentNumber}
                   onChange={(e) => handleResultFieldChange('documentNumber', e.target.value)}
+                  className="w-full text-sm font-medium text-zinc-900 bg-zinc-50 border border-zinc-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-lg px-3 py-2 outline-none transition-colors"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-zinc-500">
+                  Data da OF
+                </label>
+                <input
+                  type="date"
+                  value={result.issuedAt}
+                  onChange={(e) => handleResultFieldChange('issuedAt', e.target.value)}
                   className="w-full text-sm font-medium text-zinc-900 bg-zinc-50 border border-zinc-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-lg px-3 py-2 outline-none transition-colors"
                 />
               </div>
