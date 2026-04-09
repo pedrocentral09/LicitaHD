@@ -27,6 +27,7 @@ export function IngestaoUploader() {
   const [saved, setSaved] = useState(false);
   const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([]);
   const [selectedOrgId, setSelectedOrgId] = useState("");
+  const [orgFilter, setOrgFilter] = useState("");
 
   useEffect(() => {
     fetch("/api/organizations")
@@ -111,7 +112,10 @@ export function IngestaoUploader() {
         o.name.toLowerCase().includes(data.organizationName.toLowerCase()) ||
         data.organizationName.toLowerCase().includes(o.name.toLowerCase())
       );
-      if (matchedOrg) setSelectedOrgId(matchedOrg.id);
+      if (matchedOrg) {
+        setSelectedOrgId(matchedOrg.id);
+        setOrgFilter(matchedOrg.name);
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erro desconhecido na extração";
       setError(message);
@@ -246,18 +250,25 @@ export function IngestaoUploader() {
                 <label className="mb-1.5 block text-xs font-medium text-zinc-500">
                   Vincular ao Órgão Cadastrado *
                 </label>
-                <select
-                  value={selectedOrgId}
-                  onChange={(e) => setSelectedOrgId(e.target.value)}
-                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                >
-                  <option value="">Selecione...</option>
-                  {orgs.map((org) => (
-                    <option key={org.id} value={org.id}>
-                      {org.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <input
+                    list="orgs-datalist"
+                    placeholder="Filtrar por nome..."
+                    value={orgs.find(o => o.id === selectedOrgId)?.name || orgFilter}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setOrgFilter(val);
+                      const matched = orgs.find(o => o.name === val);
+                      setSelectedOrgId(matched ? matched.id : "");
+                    }}
+                    className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                  <datalist id="orgs-datalist">
+                    {orgs.map((org) => (
+                      <option key={org.id} value={org.name} />
+                    ))}
+                  </datalist>
+                </div>
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-zinc-500">
