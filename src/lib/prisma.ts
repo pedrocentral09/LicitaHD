@@ -9,8 +9,15 @@ const globalForPrisma = globalThis as unknown as {
 function createPrismaClient() {
   const isProduction = process.env.NODE_ENV === "production";
   const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || "postgresql://dummy:dummy@localhost:5432/dummy",
+    connectionString: process.env.DATABASE_URL,
     ssl: isProduction ? { rejectUnauthorized: false } : undefined,
+    connectionTimeoutMillis: 5000,
+    idleTimeoutMillis: 10000,
+  });
+
+  // Listener para capturar erros silenciosos do pool
+  pool.on('error', (err) => {
+    console.error('Unexpected error on idle client', err);
   });
   const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });

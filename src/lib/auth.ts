@@ -16,9 +16,14 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Credenciais inválidas");
         }
 
-        const user = await prisma.user.findUnique({
-          where: { username: credentials.username }
-        });
+        let user;
+        try {
+          user = await prisma.user.findUnique({
+            where: { username: credentials.username }
+          });
+        } catch (error: any) {
+          throw new Error("Erro DB: " + (error.message || "Timeout do Banco"));
+        }
 
         if (!user) {
           throw new Error("Usuário não encontrado");
