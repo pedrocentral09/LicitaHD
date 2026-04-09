@@ -57,6 +57,18 @@ export function IngestaoUploader() {
     }
   };
 
+  function handleResultFieldChange(field: keyof ExtractionResult, value: string) {
+    if (!result) return;
+    setResult({ ...result, [field]: value });
+  }
+
+  function handleItemChange(index: number, field: keyof ExtractedItem, value: any) {
+    if (!result) return;
+    const newItems = [...result.items];
+    newItems[index] = { ...newItems[index], [field]: value };
+    setResult({ ...result, items: newItems });
+  }
+
   async function handleExtract() {
     if (!file) return;
     setIsExtracting(true);
@@ -208,9 +220,12 @@ export function IngestaoUploader() {
                 <label className="mb-1.5 block text-xs font-medium text-zinc-500">
                   Órgão Detectado pela IA
                 </label>
-                <p className="text-sm font-medium text-zinc-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  {result.organizationName}
-                </p>
+                <input
+                  type="text"
+                  value={result.organizationName}
+                  onChange={(e) => handleResultFieldChange('organizationName', e.target.value)}
+                  className="w-full text-sm font-medium text-zinc-900 bg-amber-50 border border-amber-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-lg px-3 py-2 outline-none transition-colors"
+                />
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-zinc-500">
@@ -233,9 +248,12 @@ export function IngestaoUploader() {
                 <label className="mb-1.5 block text-xs font-medium text-zinc-500">
                   Nº do Documento / Empenho
                 </label>
-                <p className="text-sm font-medium text-zinc-900 bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2">
-                  {result.documentNumber}
-                </p>
+                <input
+                  type="text"
+                  value={result.documentNumber}
+                  onChange={(e) => handleResultFieldChange('documentNumber', e.target.value)}
+                  className="w-full text-sm font-medium text-zinc-900 bg-zinc-50 border border-zinc-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-lg px-3 py-2 outline-none transition-colors"
+                />
               </div>
             </div>
 
@@ -269,16 +287,33 @@ export function IngestaoUploader() {
                     {result.items.map((item, idx) => (
                       <tr key={idx} className="hover:bg-zinc-50/50">
                         <td className="px-4 py-2.5 text-zinc-400">{idx + 1}</td>
-                        <td className="px-4 py-2.5 text-zinc-900 font-medium max-w-xs truncate">
-                          {item.description}
+                        <td className="px-4 py-2.5">
+                          <input
+                            type="text"
+                            value={item.description}
+                            onChange={(e) => handleItemChange(idx, 'description', e.target.value)}
+                            className="w-full bg-transparent border-b border-transparent focus:border-indigo-400 focus:bg-white px-1 py-0.5 text-zinc-900 font-medium outline-none transition-colors max-w-xs"
+                          />
                         </td>
-                        <td className="px-4 py-2.5 text-right text-zinc-700">
-                          {item.quantity.toLocaleString("pt-BR")}
+                        <td className="px-4 py-2.5">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.quantity}
+                            onChange={(e) => handleItemChange(idx, 'quantity', parseFloat(e.target.value) || 0)}
+                            className="w-full text-right bg-transparent border-b border-transparent focus:border-indigo-400 focus:bg-white px-1 py-0.5 text-zinc-700 outline-none transition-colors"
+                          />
                         </td>
-                        <td className="px-4 py-2.5 text-right text-zinc-700">
-                          {item.unitPriceReturn.toLocaleString("pt-BR", {
-                            minimumFractionDigits: 2,
-                          })}
+                        <td className="px-4 py-2.5">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.0001"
+                            value={item.unitPriceReturn}
+                            onChange={(e) => handleItemChange(idx, 'unitPriceReturn', parseFloat(e.target.value) || 0)}
+                            className="w-full text-right bg-transparent border-b border-transparent focus:border-indigo-400 focus:bg-white px-1 py-0.5 text-zinc-700 outline-none transition-colors"
+                          />
                         </td>
                         <td className="px-4 py-2.5 text-right font-medium text-zinc-900">
                           {(item.quantity * item.unitPriceReturn).toLocaleString(

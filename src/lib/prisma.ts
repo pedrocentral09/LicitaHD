@@ -7,10 +7,10 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient() {
-  const isProduction = process.env.NODE_ENV === "production";
+  const isRemoteDB = process.env.DATABASE_URL?.includes('proxy') || process.env.DATABASE_URL?.includes('railway') || process.env.DATABASE_URL?.includes('supabase');
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: isProduction ? { rejectUnauthorized: false } : undefined,
+    ssl: isRemoteDB ? { rejectUnauthorized: false } : undefined,
     connectionTimeoutMillis: 5000,
     idleTimeoutMillis: 10000,
   });
