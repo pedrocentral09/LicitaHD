@@ -84,6 +84,9 @@ export function Sidebar() {
   const userRole = session.user?.role || "OPERATOR";
   const userInitials = session.user?.name?.substring(0, 2).toUpperCase() || "US";
 
+  // Não mostrar a sidebar se estivermos especificamente na tela de login
+  if (pathname === "/login") return null;
+
   return (
     <aside className="flex w-64 flex-col border-r border-zinc-200 bg-white">
       {/* Logo */}
