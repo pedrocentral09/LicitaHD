@@ -16,6 +16,7 @@ export async function POST(req: Request) {
       name: body.name,
       cnpj: body.cnpj || null,
       uf: body.uf || null,
+      isAiGenerated: body.isAiGenerated || false,
     },
   });
   return NextResponse.json(org, { status: 201 });

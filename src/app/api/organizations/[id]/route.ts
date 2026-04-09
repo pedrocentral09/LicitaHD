@@ -11,9 +11,10 @@ export async function PATCH(
   const org = await prisma.organization.update({
     where: { id },
     data: {
-      name: body.name,
-      cnpj: body.cnpj || null,
-      uf: body.uf || null,
+      ...(body.name !== undefined && { name: body.name }),
+      ...(body.cnpj !== undefined && { cnpj: body.cnpj || null }),
+      ...(body.uf !== undefined && { uf: body.uf || null }),
+      ...(body.isAiGenerated !== undefined && { isAiGenerated: body.isAiGenerated }),
     },
   });
   return NextResponse.json(org);

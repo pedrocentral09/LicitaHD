@@ -36,6 +36,7 @@ model Organization {
   name      String
   cnpj      String?  @unique
   uf        String?  @db.VarChar(2)
+  isAiGenerated Boolean @default(false)
   createdAt DateTime @default(now())
 
   purchaseOrders    PurchaseOrder[]

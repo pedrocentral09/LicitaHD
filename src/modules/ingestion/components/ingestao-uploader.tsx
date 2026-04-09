@@ -90,7 +90,7 @@ export function IngestaoUploader() {
     if (!orgFilter.trim() || isCreatingOrg) return;
     setIsCreatingOrg(true);
     try {
-      const payload = { name: orgFilter.trim() };
+      const payload = { name: orgFilter.trim(), isAiGenerated: true };
       const res = await fetch("/api/organizations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Building2, Plus, Trash2, Edit2, X } from "lucide-react";
+import { Building2, Plus, Trash2, Edit2, X, Bot, CheckCircle2 } from "lucide-react";
 
 interface Org {
   id: string;
@@ -9,6 +9,7 @@ interface Org {
   cnpj: string | null;
   uf: string | null;
   createdAt: string;
+  isAiGenerated: boolean;
   _count: { purchaseOrders: number };
 }
 
@@ -94,6 +95,16 @@ export function OrgaosList() {
   async function handleDelete(id: string) {
     if (!confirm("Tem certeza que deseja excluir este órgão?")) return;
     await fetch(`/api/organizations/${id}`, { method: "DELETE" });
+    loadOrgs();
+  }
+
+  async function handleApprove(id: string) {
+    if (!confirm("Confirmar a auditoria e aprovação definitiva deste Oŕgão?")) return;
+    await fetch(`/api/organizations/${id}`, { 
+      method: "PATCH", 
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isAiGenerated: false })
+    });
     loadOrgs();
   }
 
@@ -204,8 +215,13 @@ export function OrgaosList() {
                 <Building2 className="h-5 w-5 text-emerald-600" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-zinc-900">
-                  {org.name} {org.uf && <span className="ml-1 px-1.5 py-0.5 rounded-md bg-zinc-100 text-[10px] font-bold text-zinc-500 border border-zinc-200">{org.uf}</span>}
+                <p className="text-sm font-semibold text-zinc-900 flex items-center gap-2">
+                  {org.name} {org.uf && <span className="px-1.5 py-0.5 rounded-md bg-zinc-100 text-[10px] font-bold text-zinc-500 border border-zinc-200">{org.uf}</span>}
+                  {org.isAiGenerated && (
+                    <span className="flex items-center gap-1 bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider">
+                      <Bot className="w-3 h-3" /> IA Pendente
+                    </span>
+                  )}
                 </p>
                 <p className="text-xs text-zinc-500 mt-0.5">
                   <span className="font-mono">{org.cnpj || "Sem CNPJ"}</span> 
@@ -216,6 +232,16 @@ export function OrgaosList() {
             </div>
             
             <div className="flex items-center gap-1">
+              {org.isAiGenerated && (
+                <button
+                  onClick={() => handleApprove(org.id)}
+                  className="mr-2 flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 hover:border-emerald-300"
+                  title="Aprovar Cadastro"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Aprovar
+                </button>
+              )}
               <button
                 onClick={() => handleOpenForm(org)}
                 className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
