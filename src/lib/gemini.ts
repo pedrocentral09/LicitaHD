@@ -71,7 +71,7 @@ export async function extractPurchaseOrderFromPDF(
   const base64Data = pdfBuffer.toString("base64");
 
   const response = await ai.models.generateContent({
-    model: "gemini-1.5-flash",
+    model: "gemini-1.5-pro-002",
     contents: [
       SYSTEM_PROMPT,
       {
