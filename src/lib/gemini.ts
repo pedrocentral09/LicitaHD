@@ -1,9 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 
-export const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY || "missing-key-during-build",
-});
-
 // ----------------------------------------------------------------
 // Schema esperado pelo front-end (IngestaoUploader)
 // ----------------------------------------------------------------
@@ -62,11 +58,18 @@ Você DEVE estruturar o JSON de saída da seguinte forma (utilize este exato sch
 export async function extractPurchaseOrderFromPDF(
   pdfBuffer: Buffer
 ): Promise<ExtractionResult> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey || apiKey === "missing-key-during-build") {
+    throw new Error("401: A chave API do Gemini ausente ou lida como nula no momento da requisição!");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
   // Converter buffer direto para Base64 (sem quebrar em texto via pdf-parse)
   const base64Data = pdfBuffer.toString("base64");
 
   const response = await ai.models.generateContent({
-    model: "gemini-2.5-pro",
+    model: "gemini-1.5-pro",
     contents: [
       SYSTEM_PROMPT,
       {
