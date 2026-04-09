@@ -29,16 +29,18 @@
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
-    "@types/node": "^22.15.2",
+    "@types/node": "^22.19.17",
     "@types/pdf-parse": "^1.1.5",
     "@types/pg": "^8.20.0",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "eslint": "^9.25.1",
     "eslint-config-next": "^15.3.1",
+    "playwright": "^1.59.1",
     "postcss": "^8.5.3",
     "prisma": "^7.7.0",
     "tailwindcss": "^4.1.4",
-    "typescript": "^5.8.3"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   }
 }

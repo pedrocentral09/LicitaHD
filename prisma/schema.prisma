@@ -35,10 +35,12 @@ model Organization {
   id        String   @id @default(uuid())
   name      String
   cnpj      String?  @unique
+  uf        String?  @db.VarChar(2)
   createdAt DateTime @default(now())
 
   purchaseOrders    PurchaseOrder[]
   procurementGroups ProcurementGroup[]
+  accountReceivables AccountReceivable[]
 }
 
 // -------------------------------------------------------------
@@ -58,11 +60,16 @@ model PurchaseOrder {
   // Rastreio em Tela
   operatorName String?
 
+  // Vendedor / Comercial
+  sellerName String?
+
   issuedAt  DateTime?
+  margin    Float?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
   items PurchaseItem[]
+  accountReceivables AccountReceivable[]
 
   @@unique([organizationId, documentNumber])
 }
@@ -71,6 +78,7 @@ enum OrderStatus {
   DRAFT
   VALIDATED
   QUOTED
+  RECEIVED
   DELIVERED
   CANCELED
 }
@@ -83,9 +91,11 @@ model PurchaseItem {
   description     String
   quantity        Float
   unitPriceReturn Float
+  active          Boolean   @default(true)
 
   // Campos de precificação e entrega
   costPrice        Float?
+  taxPercent       Float?    @default(0)
   conversionFactor Float     @default(1)
   expectedDelivery DateTime?
   notes            String?
@@ -96,6 +106,8 @@ model PurchaseItem {
 
   // Entrega Granular
   receivedAt       DateTime?
+  expectedCustomerDelivery DateTime?
+  deliveredToCustomerAt    DateTime?
 
   purchaseOrderId String
   purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
@@ -117,4 +129,31 @@ model ProcurementGroup {
   items PurchaseItem[]
 
   @@unique([organizationId, description])
+}
+
+// -------------------------------------------------------------
+// Módulo: Financeiro (Contas a Receber)
+// -------------------------------------------------------------
+model AccountReceivable {
+  id          String   @id @default(uuid())
+  title       String
+  amount      Float
+  dueDate     DateTime
+  paidAt      DateTime?
+  status      ReceivableStatus @default(PENDING)
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  purchaseOrderId String?
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum ReceivableStatus {
+  PENDING
+  PAID
+  OVERDUE
 }

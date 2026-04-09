@@ -18,6 +18,7 @@ export interface ExtractionResult {
   organizationName: string;
   documentNumber: string;
   issuedAt: string;
+  sellerName: string;
   items: ExtractedItem[];
 }
 
@@ -37,11 +38,12 @@ REGRAS OBRIGATÓRIAS:
 6. "documentNumber" pode ser: número do empenho, número da OC, número da AF, número da nota, ou qualquer identificador do documento.
 7. "organizationName" é o nome do órgão público comprador (prefeitura, secretaria, autarquia, etc.).
 8. "issuedAt" é a data de emissão no formato YYYY-MM-DD.
-9. Na "description" de cada item, você DEVE extrair a descrição COMPLETA, longa e exata do produto. Inclua marcas, especificações, portarias, e números técnicos se existirem. Não resuma.
-10. Se o texto estiver confuso ou ambíguo, faça o melhor esforço para extrair as informações.
+9. "sellerName" é o nome do contato, vendedor ou representante comercial mencionado na ordem (se não existir, deixe vazio "" e não confunda com o CNPJ do fornecedor).
+10. Na "description" de cada item, você DEVE extrair a descrição COMPLETA, longa e exata do produto. Inclua marcas, especificações, portarias, e números técnicos se existirem. Não resuma.
+11. Se o texto estiver confuso ou ambíguo, faça o melhor esforço para extrair as informações.
 
 FORMATO DE SAÍDA:
-{"organizationName":"Nome do órgão","documentNumber":"ABC-123","issuedAt":"2025-01-15","items":[{"description":"DESCRIÇÃO LONGA E COMPLETA DO PRODUTO AQUI","quantity":100,"unitPriceReturn":25.50}]}`;
+{"organizationName":"Nome do órgão","documentNumber":"ABC-123","issuedAt":"2025-01-15","sellerName":"João Silva","items":[{"description":"DESCRIÇÃO LONGA E COMPLETA DO PRODUTO AQUI","quantity":100,"unitPriceReturn":25.50}]}`;
 
 // ----------------------------------------------------------------
 // Função principal de extração via GPT-4o
@@ -108,6 +110,7 @@ export async function extractPurchaseOrderFromPDF(
     organizationName: String(parsed.organizationName || "Não identificado"),
     documentNumber: String(parsed.documentNumber || "Não identificado"),
     issuedAt: String(parsed.issuedAt || ""),
+    sellerName: String(parsed.sellerName || ""),
     items: parsed.items.map((item) => ({
       description: String(item.description || "Item sem descrição"),
       quantity: Number(item.quantity) || 0,

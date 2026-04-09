@@ -4,23 +4,49 @@ import {
   Building2,
   AlertTriangle,
   TrendingUp,
+  DollarSign
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 async function getStats() {
-  const [totalOrders, totalOrgs, draftOrders, validatedOrders] = await Promise.all([
+  const [totalOrders, totalOrgs, draftOrders, validatedOrders, validItems] = await Promise.all([
     prisma.purchaseOrder.count(),
     prisma.organization.count(),
     prisma.purchaseOrder.count({ where: { status: "DRAFT" } }),
     prisma.purchaseOrder.count({ where: { status: "VALIDATED" } }),
+    prisma.purchaseItem.findMany({
+      where: {
+        purchaseOrder: {
+          status: { in: ["VALIDATED", "QUOTED", "DELIVERED"] }
+        }
+      },
+      select: { quantity: true, unitPriceReturn: true }
+    })
   ]);
 
-  return { totalOrders, totalOrgs, draftOrders, validatedOrders };
+  const totalSalesValue = validItems.reduce((acc, item) => acc + (item.quantity * item.unitPriceReturn), 0);
+
+  return { totalOrders, totalOrgs, draftOrders, validatedOrders, totalSalesValue };
 }
 
 export default async function DashboardPage() {
   const stats = await getStats();
 
+  const formattedTotalSales = new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(stats.totalSalesValue);
+
   const cards = [
+    {
+      label: "Vendas Totais",
+      value: formattedTotalSales,
+      icon: DollarSign,
+      color: "from-emerald-500 to-teal-500",
+      bgLight: "bg-emerald-50",
+      textColor: "text-emerald-700",
+      span2: true, // we'll use this to make it wider if needed
+    },
     {
       label: "Total de OCs",
       value: stats.totalOrders,
@@ -33,9 +59,9 @@ export default async function DashboardPage() {
       label: "Órgãos Cadastrados",
       value: stats.totalOrgs,
       icon: Building2,
-      color: "from-emerald-500 to-emerald-600",
-      bgLight: "bg-emerald-50",
-      textColor: "text-emerald-700",
+      color: "from-sky-500 to-sky-600",
+      bgLight: "bg-sky-50",
+      textColor: "text-sky-700",
     },
     {
       label: "Aguardando Validação",
@@ -70,7 +96,10 @@ export default async function DashboardPage() {
         {cards.map((card) => (
           <div
             key={card.label}
-            className="relative overflow-hidden rounded-xl border border-zinc-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+            className={cn(
+              "relative overflow-hidden rounded-xl border border-zinc-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md",
+              card.span2 && "lg:col-span-4 xl:col-span-2"
+            )}
           >
             <div className="flex items-center justify-between">
               <div>

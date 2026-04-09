@@ -15,6 +15,7 @@ export async function POST(req: Request) {
     data: {
       name: body.name,
       cnpj: body.cnpj || null,
+      uf: body.uf || null,
     },
   });
   return NextResponse.json(org, { status: 201 });

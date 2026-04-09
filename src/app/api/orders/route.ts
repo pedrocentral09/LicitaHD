@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const orders = await prisma.purchaseOrder.findMany({
     orderBy: { createdAt: "desc" },
@@ -36,6 +38,7 @@ export async function POST(req: Request) {
       documentNumber: body.documentNumber,
       organizationId: body.organizationId,
       issuedAt: body.issuedAt ? new Date(body.issuedAt) : null,
+      sellerName: body.sellerName || null,
       status: "DRAFT",
       items: {
         create: body.items.map((item: { description: string; quantity: number; unitPriceReturn: number }) => ({

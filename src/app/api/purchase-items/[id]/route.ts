@@ -12,8 +12,10 @@ export async function PATCH(
     where: { id },
     data: {
       costPrice: body.costPrice !== undefined ? body.costPrice : undefined,
+      taxPercent: body.taxPercent !== undefined ? body.taxPercent : undefined,
       conversionFactor: body.conversionFactor !== undefined ? body.conversionFactor : undefined,
       expectedDelivery: body.expectedDelivery ? new Date(body.expectedDelivery) : undefined,
+      expectedCustomerDelivery: body.expectedCustomerDelivery ? new Date(body.expectedCustomerDelivery) : undefined,
       buyingLocation: body.buyingLocation !== undefined ? body.buyingLocation : undefined,
       ownership: body.ownership !== undefined ? body.ownership : undefined,
     },

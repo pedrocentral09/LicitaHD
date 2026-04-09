@@ -1,22 +1,33 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Building2, Plus, Trash2 } from "lucide-react";
+import { Building2, Plus, Trash2, Edit2, X } from "lucide-react";
 
 interface Org {
   id: string;
   name: string;
   cnpj: string | null;
+  uf: string | null;
   createdAt: string;
   _count: { purchaseOrders: number };
 }
 
+const UFS = [
+  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", 
+  "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", 
+  "SP", "SE", "TO"
+];
+
 export function OrgaosList() {
   const [orgs, setOrgs] = useState<Org[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Form Fields
   const [name, setName] = useState("");
   const [cnpj, setCnpj] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [uf, setUf] = useState("");
 
   async function loadOrgs() {
     const res = await fetch("/api/organizations");
@@ -28,17 +39,54 @@ export function OrgaosList() {
     loadOrgs();
   }, []);
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    await fetch("/api/organizations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, cnpj: cnpj || null }),
-    });
+  function handleOpenForm(org?: Org) {
+    if (org) {
+      setEditingId(org.id);
+      setName(org.name);
+      setCnpj(org.cnpj || "");
+      setUf(org.uf || "");
+    } else {
+      setEditingId(null);
+      setName("");
+      setCnpj("");
+      setUf("");
+    }
+    setShowForm(true);
+  }
+
+  function handleCloseForm() {
+    setShowForm(false);
+    setEditingId(null);
     setName("");
     setCnpj("");
-    setShowForm(false);
+    setUf("");
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+
+    const payload = { 
+      name, 
+      cnpj: cnpj || null, 
+      uf: uf || null 
+    };
+
+    if (editingId) {
+      await fetch(`/api/organizations/${editingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    } else {
+      await fetch("/api/organizations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    }
+
+    handleCloseForm();
     setLoading(false);
     loadOrgs();
   }
@@ -53,7 +101,7 @@ export function OrgaosList() {
     <div>
       {/* Add Button */}
       <button
-        onClick={() => setShowForm(!showForm)}
+        onClick={() => handleOpenForm()}
         className="mb-6 flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
       >
         <Plus className="h-4 w-4" />
@@ -63,11 +111,21 @@ export function OrgaosList() {
       {/* Form */}
       {showForm && (
         <form
-          onSubmit={handleCreate}
-          className="mb-6 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm"
+          onSubmit={handleSubmit}
+          className="mb-6 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm relative"
         >
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
+          <div className="absolute top-4 right-4">
+            <button type="button" onClick={handleCloseForm} className="text-zinc-400 hover:text-zinc-600">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          
+          <h3 className="text-lg font-semibold text-zinc-900 mb-4">
+            {editingId ? "Editar Órgão" : "Cadastrar Órgão"}
+          </h3>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+            <div className="sm:col-span-2">
               <label className="mb-1.5 block text-sm font-medium text-zinc-700">
                 Nome do Órgão / Prefeitura
               </label>
@@ -92,19 +150,34 @@ export function OrgaosList() {
                 className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-zinc-700">
+                UF
+              </label>
+              <select
+                value={uf}
+                onChange={(e) => setUf(e.target.value)}
+                className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white"
+              >
+                <option value="">--</option>
+                {UFS.map(state => (
+                  <option key={state} value={state}>{state}</option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div className="mt-4 flex gap-3">
+          <div className="mt-6 flex gap-3">
             <button
               type="submit"
               disabled={loading}
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+              className="rounded-lg bg-indigo-600 px-6 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
             >
-              {loading ? "Salvando..." : "Cadastrar"}
+              {loading ? "Salvando..." : editingId ? "Atualizar" : "Cadastrar"}
             </button>
             <button
               type="button"
-              onClick={() => setShowForm(false)}
-              className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+              onClick={handleCloseForm}
+              className="rounded-lg border border-zinc-300 px-6 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
             >
               Cancelar
             </button>
@@ -131,18 +204,33 @@ export function OrgaosList() {
                 <Building2 className="h-5 w-5 text-emerald-600" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-zinc-900">{org.name}</p>
-                <p className="text-xs text-zinc-400">
-                  {org.cnpj || "Sem CNPJ"} · {org._count.purchaseOrders} OC(s)
+                <p className="text-sm font-semibold text-zinc-900">
+                  {org.name} {org.uf && <span className="ml-1 px-1.5 py-0.5 rounded-md bg-zinc-100 text-[10px] font-bold text-zinc-500 border border-zinc-200">{org.uf}</span>}
+                </p>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  <span className="font-mono">{org.cnpj || "Sem CNPJ"}</span> 
+                  <span className="mx-2 text-zinc-300">&bull;</span>
+                  <span className="text-indigo-600 font-medium">{org._count.purchaseOrders} OC(s)</span> vinculadas
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => handleDelete(org.id)}
-              className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-500"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
+            
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => handleOpenForm(org)}
+                className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
+                title="Editar Órgão"
+              >
+                <Edit2 className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => handleDelete(org.id)}
+                className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                title="Excluir Órgão"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         ))}
       </div>

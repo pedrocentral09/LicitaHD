@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ShoppingCart, Save, Loader2, ChevronDown, ChevronUp, Package, FileText, Trash2, CheckCircle } from "lucide-react";
+import { ShoppingCart, Save, Loader2, ChevronDown, ChevronUp, Package, FileText, Trash2, CheckCircle, Search } from "lucide-react";
 
 interface PurchaseItem {
   id: string;
@@ -9,8 +9,10 @@ interface PurchaseItem {
   quantity: number;
   unitPriceReturn: number;
   costPrice: number | null;
+  taxPercent: number | null;
   conversionFactor: number;
   expectedDelivery: string | null;
+  expectedCustomerDelivery: string | null;
   buyingLocation: string | null;
   ownership: string | null;
   purchaseOrder?: { documentNumber: string; id: string };
@@ -37,6 +39,7 @@ interface OrgDashboard {
 
 export function ComprasPanel() {
   const [organizations, setOrganizations] = useState<OrgDashboard[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [expandedOrg, setExpandedOrg] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Record<string, "grupo" | "oc">>({});
   const [saving, setSaving] = useState<string | null>(null);
@@ -72,10 +75,38 @@ export function ComprasPanel() {
     }
   }
 
-  async function handleFinalizeOC(ocId: string, docNumber: string) {
-    if (window.confirm(`Deseja finalizar a cotação da OC ${docNumber}?\n\nEla será enviada para a tela de 'Aguardando Entrega' e sairá do seu painel atual.`)) {
-      setSaving(`fin-${ocId}`);
-      await fetch(`/api/orders/${ocId}/status`, {
+  const parseNumOrNull = (val: any) => {
+    if (val === "" || val == null) return null;
+    const n = Number(String(val).replace(',', '.'));
+    return Number.isNaN(n) ? null : n;
+  };
+
+  async function handleFinalizeOC(oc: any) {
+    if (window.confirm(`Tem certeza que deseja finalizar a Cotação da OC ${oc.documentNumber}? \n\nIsso moverá a ordem para as etapas de Entrega Logística.`)) {
+      setSaving(`fin-${oc.id}`);
+      
+      // Auto-save all items in this OC before finalizing
+      if (oc.items && oc.items.length > 0) {
+        await Promise.all(
+          oc.items.map((item: any) => {
+            const draft = getItemDraft(item);
+            return fetch(`/api/purchase-items/${item.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                costPrice: parseNumOrNull(draft.costPrice),
+                taxPercent: parseNumOrNull(draft.taxPercent),
+                conversionFactor: parseNumOrNull(draft.conversionFactor) || 1,
+                expectedDelivery: draft.expectedDelivery || null,
+                buyingLocation: draft.buyingLocation || null,
+                ownership: draft.ownership || null,
+              }),
+            });
+          })
+        );
+      }
+
+      await fetch(`/api/orders/${oc.id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "QUOTED" })
@@ -98,8 +129,10 @@ export function ComprasPanel() {
     const base = items[0] || {};
     const defaultData = {
       costPrice: base.costPrice ?? "",
+      taxPercent: base.taxPercent ?? "",
       conversionFactor: base.conversionFactor ?? 1,
       expectedDelivery: base.expectedDelivery ? base.expectedDelivery.slice(0, 10) : "",
+      expectedCustomerDelivery: base.expectedCustomerDelivery ? base.expectedCustomerDelivery.slice(0, 10) : "",
       buyingLocation: base.buyingLocation ?? "",
       ownership: base.ownership ?? "",
     };
@@ -119,8 +152,10 @@ export function ComprasPanel() {
   function getItemDraft(item: PurchaseItem) {
     const defaultData = {
       costPrice: item.costPrice ?? "",
+      taxPercent: item.taxPercent ?? "",
       conversionFactor: item.conversionFactor ?? 1,
       expectedDelivery: item.expectedDelivery ? item.expectedDelivery.slice(0, 10) : "",
+      expectedCustomerDelivery: item.expectedCustomerDelivery ? item.expectedCustomerDelivery.slice(0, 10) : "",
       buyingLocation: item.buyingLocation ?? "",
       ownership: item.ownership ?? "",
     };
@@ -144,15 +179,45 @@ export function ComprasPanel() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        costPrice: draft.costPrice === "" || draft.costPrice == null ? null : Number(draft.costPrice),
-        conversionFactor: Number(draft.conversionFactor || 1),
+        costPrice: parseNumOrNull(draft.costPrice),
+        taxPercent: parseNumOrNull(draft.taxPercent),
+        conversionFactor: parseNumOrNull(draft.conversionFactor) || 1,
         expectedDelivery: draft.expectedDelivery || null,
+        expectedCustomerDelivery: draft.expectedCustomerDelivery || null,
         buyingLocation: draft.buyingLocation || null,
         ownership: draft.ownership || null,
       }),
     });
     setSaving(null);
     loadDashboard();
+  }
+
+  async function saveSingleFieldGroup(groupId: string, field: string, value: any) {
+    let valOrNull = value === "" || value == null ? null : value;
+    if (valOrNull !== null && field !== "expectedDelivery" && field !== "expectedCustomerDelivery" && field !== "buyingLocation" && field !== "ownership") {
+      valOrNull = Number(String(value).replace(',', '.'));
+      if (Number.isNaN(valOrNull)) return; // Avoid saving invalid letters/symbols as null
+    }
+    
+    await fetch(`/api/procurement-groups/${groupId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [field]: valOrNull }),
+    });
+  }
+
+  async function saveSingleFieldItem(itemId: string, field: string, value: any) {
+    let valOrNull = value === "" || value == null ? null : value;
+    if (valOrNull !== null && field !== "expectedDelivery" && field !== "expectedCustomerDelivery" && field !== "buyingLocation" && field !== "ownership") {
+      valOrNull = Number(String(value).replace(',', '.'));
+      if (Number.isNaN(valOrNull)) return;
+    }
+
+    await fetch(`/api/purchase-items/${itemId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [field]: valOrNull }),
+    });
   }
 
   async function saveItem(item: PurchaseItem) {
@@ -162,9 +227,11 @@ export function ComprasPanel() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        costPrice: draft.costPrice === "" || draft.costPrice == null ? null : Number(draft.costPrice),
-        conversionFactor: Number(draft.conversionFactor || 1),
+        costPrice: parseNumOrNull(draft.costPrice),
+        taxPercent: parseNumOrNull(draft.taxPercent),
+        conversionFactor: parseNumOrNull(draft.conversionFactor) || 1,
         expectedDelivery: draft.expectedDelivery || null,
+        expectedCustomerDelivery: draft.expectedCustomerDelivery || null,
         buyingLocation: draft.buyingLocation || null,
         ownership: draft.ownership || null,
       }),
@@ -173,16 +240,43 @@ export function ComprasPanel() {
     loadDashboard();
   }
 
+  const filteredOrganizations = organizations.map(org => {
+    const orgNameMatch = org.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const filteredOcs = org.purchaseOrders.filter(oc => 
+      orgNameMatch || oc.documentNumber.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    return { ...org, purchaseOrders: filteredOcs };
+  }).filter(org => org.name.toLowerCase().includes(searchTerm.toLowerCase()) || org.purchaseOrders.length > 0);
+
   return (
-    <div className="space-y-4">
-      {organizations.length === 0 && (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+          <ShoppingCart className="w-5 h-5 text-indigo-500" />
+          Painel de Compras de Produtos ({filteredOrganizations.length})
+        </h2>
+        
+        {/* Search Bar */}
+        <div className="relative w-full max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+          <input
+            type="text"
+            placeholder="Buscar por prefeitura ou número da OC..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 text-sm border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-sm"
+          />
+        </div>
+      </div>
+
+      {filteredOrganizations.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-zinc-300 py-16 text-center">
           <ShoppingCart className="h-12 w-12 text-zinc-300 mb-3" />
-          <p className="text-sm text-zinc-500">Nenhuma compra pendente no momento</p>
+          <p className="text-sm text-zinc-500">Nenhuma compra pendente correspondente no momento</p>
         </div>
       )}
 
-      {organizations.map((org) => {
+      {filteredOrganizations.map((org) => {
         const isExpanded = expandedOrg === org.id;
         const tab = activeTab[org.id] || "grupo";
 
@@ -248,7 +342,11 @@ export function ComprasPanel() {
                       const avgSell = group.items.reduce((s, i) => s + i.unitPriceReturn, 0) / (group.items.length || 1);
                       let margin = null;
                       if (draft.costPrice && Number(draft.costPrice) > 0) {
-                        margin = ((avgSell - Number(draft.costPrice)) / avgSell) * 100;
+                        const taxAmount = avgSell * (Number(draft.taxPercent || 0) / 100);
+                        const totalCusto = Number(draft.costPrice) + taxAmount;
+                        if (avgSell > 0) {
+                          margin = ((avgSell - totalCusto) / avgSell) * 100;
+                        }
                       }
 
                       return (
@@ -267,7 +365,7 @@ export function ComprasPanel() {
                             )}
                           </div>
                           
-                          <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mt-2">
+                          <div className="grid grid-cols-1 md:grid-cols-7 gap-4 mt-2">
                             <div>
                               <label className="text-xs text-zinc-500 mb-1 block">Local de Compra</label>
                               <input
@@ -291,10 +389,22 @@ export function ComprasPanel() {
                             <div>
                               <label className="text-xs text-zinc-500 mb-1 block">Custo (R$)</label>
                               <input
-                                type="number" step="0.01"
-                                className="w-full border border-zinc-300 rounded px-3 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                                value={draft.costPrice}
+                                type="text" inputMode="decimal"
+                                className="w-full border border-zinc-300 rounded px-3 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-sm"
+                                value={draft.costPrice !== null && draft.costPrice !== "" ? String(draft.costPrice).replace('.', ',') : ""}
                                 onChange={(e) => updateGroupDraft(group.id, "costPrice", e.target.value)}
+                                onBlur={(e) => saveSingleFieldGroup(group.id, "costPrice", e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-zinc-500 mb-1 block">Imposto (%)</label>
+                              <input
+                                type="text" inputMode="decimal"
+                                className="w-full border border-zinc-300 rounded px-3 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-sm"
+                                placeholder="0"
+                                value={draft.taxPercent !== null && draft.taxPercent !== "" ? String(draft.taxPercent).replace('.', ',') : ""}
+                                onChange={(e) => updateGroupDraft(group.id, "taxPercent", e.target.value)}
+                                onBlur={(e) => saveSingleFieldGroup(group.id, "taxPercent", e.target.value)}
                               />
                             </div>
                             <div>
@@ -306,14 +416,25 @@ export function ComprasPanel() {
                                 onChange={(e) => updateGroupDraft(group.id, "conversionFactor", e.target.value)}
                               />
                             </div>
-                            <div>
-                              <label className="text-xs text-zinc-500 mb-1 block">Previsão Entrega</label>
-                              <input
-                                type="date"
-                                className="w-full border border-zinc-300 rounded px-3 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                                value={draft.expectedDelivery}
-                                onChange={(e) => updateGroupDraft(group.id, "expectedDelivery", e.target.value)}
-                              />
+                            <div className="col-span-2 flex gap-4">
+                              <div className="w-1/2">
+                                <label className="text-xs text-zinc-500 mb-1 block">Prev. Fornecedor</label>
+                                <input
+                                  type="date"
+                                  className="w-full border border-zinc-300 rounded px-3 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                                  value={draft.expectedDelivery}
+                                  onChange={(e) => updateGroupDraft(group.id, "expectedDelivery", e.target.value)}
+                                />
+                              </div>
+                              <div className="w-1/2">
+                                <label className="text-xs text-zinc-500 mb-1 block">Prev. Gov. (Entrega)</label>
+                                <input
+                                  type="date"
+                                  className="w-full border border-zinc-300 rounded px-3 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                                  value={draft.expectedCustomerDelivery}
+                                  onChange={(e) => updateGroupDraft(group.id, "expectedCustomerDelivery", e.target.value)}
+                                />
+                              </div>
                             </div>
                             <div className="flex items-end">
                               <button
@@ -347,7 +468,7 @@ export function ComprasPanel() {
                               {oc.items.length} ITENS
                             </span>
                             <button
-                              onClick={() => handleFinalizeOC(oc.id, oc.documentNumber)}
+                              onClick={() => handleFinalizeOC(oc)}
                               disabled={saving === `fin-${oc.id}`}
                               className="flex items-center gap-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded px-2 py-1 transition-colors disabled:opacity-50 font-medium text-xs border border-transparent hover:border-emerald-200"
                               title="Finalizar Cotação e Enviar para Entregas"
@@ -379,7 +500,11 @@ export function ComprasPanel() {
                             const draft = getItemDraft(item);
                             let margin = null;
                             if (draft.costPrice && Number(draft.costPrice) > 0) {
-                              margin = ((item.unitPriceReturn - Number(draft.costPrice)) / item.unitPriceReturn) * 100;
+                              const taxAmount = item.unitPriceReturn * (Number(draft.taxPercent || 0) / 100);
+                              const totalCusto = Number(draft.costPrice) + taxAmount;
+                              if (item.unitPriceReturn > 0) {
+                                margin = ((item.unitPriceReturn - totalCusto) / item.unitPriceReturn) * 100;
+                              }
                             }
 
                             return (
@@ -401,13 +526,25 @@ export function ComprasPanel() {
                                     <label className="text-[10px] text-zinc-400 block">Venda (R$)</label>
                                     <span className="text-xs font-medium">{item.unitPriceReturn.toFixed(2)}</span>
                                   </div>
-                                  <div className="w-28">
+                                  <div className="w-24">
                                     <label className="text-[10px] text-indigo-600 font-bold block">Custo (R$)</label>
                                     <input
-                                      type="number" step="0.01"
+                                      type="text" inputMode="decimal"
                                       className="w-full border border-zinc-300 rounded px-2 py-1 text-xs focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                                      value={draft.costPrice}
+                                      value={draft.costPrice !== null && draft.costPrice !== "" ? String(draft.costPrice).replace('.', ',') : ""}
                                       onChange={(e) => updateItemDraft(item.id, "costPrice", e.target.value)}
+                                      onBlur={(e) => saveSingleFieldItem(item.id, "costPrice", e.target.value)}
+                                    />
+                                  </div>
+                                  <div className="w-20">
+                                    <label className="text-[10px] text-indigo-600 font-bold block">Imposto (%)</label>
+                                    <input
+                                      type="text" inputMode="decimal"
+                                      className="w-full border border-zinc-300 rounded px-2 py-1 text-xs focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                                      value={draft.taxPercent !== null && draft.taxPercent !== "" ? String(draft.taxPercent).replace('.', ',') : ""}
+                                      placeholder="0"
+                                      onChange={(e) => updateItemDraft(item.id, "taxPercent", e.target.value)}
+                                      onBlur={(e) => saveSingleFieldItem(item.id, "taxPercent", e.target.value)}
                                     />
                                   </div>
                                   <div className="w-32">
@@ -439,13 +576,22 @@ export function ComprasPanel() {
                                       onChange={(e) => updateItemDraft(item.id, "conversionFactor", e.target.value)}
                                     />
                                   </div>
-                                  <div className="w-28">
-                                    <label className="text-[10px] text-zinc-500 block">Entrega</label>
+                                  <div className="w-24">
+                                    <label className="text-[10px] text-zinc-500 block">Prev. Fornecedor</label>
                                     <input
                                       type="date"
                                       className="w-full border border-zinc-300 rounded px-2 py-1 text-xs focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                                       value={draft.expectedDelivery}
                                       onChange={(e) => updateItemDraft(item.id, "expectedDelivery", e.target.value)}
+                                    />
+                                  </div>
+                                  <div className="w-24">
+                                    <label className="text-[10px] text-zinc-500 block">Prev. Governo</label>
+                                    <input
+                                      type="date"
+                                      className="w-full border border-zinc-300 rounded px-2 py-1 text-xs focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                                      value={draft.expectedCustomerDelivery}
+                                      onChange={(e) => updateItemDraft(item.id, "expectedCustomerDelivery", e.target.value)}
                                     />
                                   </div>
                                   <div className="ml-auto">

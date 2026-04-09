@@ -29,14 +29,14 @@ export async function PATCH(
     if (allReceived) {
       await prisma.purchaseOrder.update({
         where: { id: item.purchaseOrderId },
-        data: { status: "DELIVERED" }
+        data: { status: "RECEIVED" }
       });
     } else {
-      // Caso alguém "desfaça" e a OC estivesse marcada como DELIVERED, voltamos ela para QUOTED
+      // Caso alguém "desfaça" e a OC estivesse marcada como RECEIVED, voltamos ela para QUOTED
       const oc = await prisma.purchaseOrder.findUnique({
         where: { id: item.purchaseOrderId }
       });
-      if (oc?.status === "DELIVERED") {
+      if (oc?.status === "RECEIVED") {
         await prisma.purchaseOrder.update({
           where: { id: item.purchaseOrderId },
           data: { status: "QUOTED" }
