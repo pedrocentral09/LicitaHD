@@ -4,9 +4,12 @@ import {
   Building2,
   AlertTriangle,
   TrendingUp,
-  DollarSign
+  DollarSign,
+  PieChart
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 async function getStats() {
   const [totalOrders, totalOrgs, draftOrders, validatedOrders, validItems] = await Promise.all([
@@ -20,16 +23,21 @@ async function getStats() {
           status: { in: ["VALIDATED", "QUOTED", "DELIVERED"] }
         }
       },
-      select: { quantity: true, unitPriceReturn: true }
+      select: { quantity: true, unitPriceReturn: true, costPrice: true }
     })
   ]);
 
   const totalSalesValue = validItems.reduce((acc, item) => acc + (item.quantity * item.unitPriceReturn), 0);
+  const totalCostValue = validItems.reduce((acc, item) => acc + (item.quantity * (item.costPrice || 0)), 0);
+  const totalProfitValue = totalSalesValue - totalCostValue;
 
-  return { totalOrders, totalOrgs, draftOrders, validatedOrders, totalSalesValue };
+  return { totalOrders, totalOrgs, draftOrders, validatedOrders, totalSalesValue, totalProfitValue };
 }
 
 export default async function DashboardPage() {
+  const session = await getServerSession(authOptions);
+  const isAdmin = session?.user?.role === "GOD";
+
   const stats = await getStats();
 
   const formattedTotalSales = new Intl.NumberFormat('pt-BR', {
@@ -37,7 +45,16 @@ export default async function DashboardPage() {
     currency: 'BRL'
   }).format(stats.totalSalesValue);
 
-  const cards = [
+  const formattedProfit = new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(stats.totalProfitValue);
+
+  const profitMargin = stats.totalSalesValue > 0 
+    ? ((stats.totalProfitValue / stats.totalSalesValue) * 100).toFixed(1) 
+    : "0.0";
+
+  const cards: any[] = [
     {
       label: "Vendas Totais",
       value: formattedTotalSales,
@@ -81,6 +98,20 @@ export default async function DashboardPage() {
     },
   ];
 
+  if (isAdmin) {
+    cards.splice(1, 0, {
+      label: "Lucratividade Bruta",
+      value: formattedProfit,
+      icon: PieChart,
+      color: "from-blue-500 to-blue-600",
+      bgLight: "bg-blue-50",
+      textColor: "text-blue-700",
+      span2: true,
+      subtitle: `Margem: ${profitMargin}%`,
+      subtitleColor: "text-blue-600"
+    });
+  }
+
   return (
     <div className="p-8">
       {/* Header */}
@@ -105,6 +136,11 @@ export default async function DashboardPage() {
               <div>
                 <p className="text-sm font-medium text-zinc-500">{card.label}</p>
                 <p className="mt-2 text-3xl font-bold text-zinc-900">{card.value}</p>
+                {card.subtitle && (
+                  <p className={cn("mt-1.5 text-xs font-semibold", card.subtitleColor || "text-zinc-500")}>
+                    {card.subtitle}
+                  </p>
+                )}
               </div>
               <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${card.bgLight}`}>
                 <card.icon className={`h-6 w-6 ${card.textColor}`} />
