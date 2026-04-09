@@ -58,10 +58,12 @@ Você DEVE estruturar o JSON de saída da seguinte forma (utilize este exato sch
 export async function extractPurchaseOrderFromPDF(
   pdfBuffer: Buffer
 ): Promise<ExtractionResult> {
-  const apiKey = process.env.GEMINI_API_KEY;
+  let apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey || apiKey === "missing-key-during-build") {
-    throw new Error("401: A chave API do Gemini ausente ou lida como nula no momento da requisição!");
+    throw new Error("Local/Railway: A variavel GEMINI_API_KEY esta morta ou lida como nula no momento da requisicao!");
   }
+  
+  apiKey = apiKey.trim();
 
   const ai = new GoogleGenAI({ apiKey });
 

@@ -48,12 +48,11 @@ export async function POST(req: Request) {
     // Detectar erros específicos da API
     if (message.includes("401") || message.includes("API key not valid")) {
       return NextResponse.json(
-        { error: "API key do Gemini inválida. Verifique o .env." },
+        { error: `API key do Gemini inválida ou Erro de Permissão. Detalhe Técnico: ${message}` },
         { status: 401 }
       );
     }
-
-    if (message.includes("429") || message.includes("rate limit") || message.includes("Quota exceeded")) {
+    if (message.includes("429") || message.includes("rate limit") || message.includes("Quota")) {
       return NextResponse.json(
         { error: "Limite de requisições do Gemini atingido. Tente em 1 minuto." },
         { status: 429 }
