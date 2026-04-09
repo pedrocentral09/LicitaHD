@@ -53,6 +53,11 @@ export function OrgaosList() {
       setUf("");
     }
     setShowForm(true);
+    
+    // Rolar a tela suavemente para o formulário
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }, 100);
   }
 
   function handleCloseForm() {
