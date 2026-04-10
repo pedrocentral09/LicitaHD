@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { PackageOpen, CheckCircle, Loader2, ChevronDown, ChevronUp, Clock, Undo2, Search } from "lucide-react";
+import { PackageOpen, CheckCircle, Loader2, ChevronDown, ChevronUp, Clock, Undo2, Search, FileCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface PurchaseItem {
@@ -17,6 +17,7 @@ interface PurchaseItem {
   ownership: string | null;
   receivedAt: string | null;
   deliveredToCustomerAt: string | null;
+  invoiceNumber: string | null;
 }
 
 interface PurchaseOrder {
@@ -74,6 +75,18 @@ export function EntregasPanel() {
       loadDashboard(activeTab);
     } catch (e) {
       console.error("Failed to save date", e);
+    }
+  }
+
+  async function saveInvoiceNumber(itemId: string, value: string) {
+    try {
+      await fetch(`/api/purchase-items/${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceNumber: value.trim() || null })
+      });
+    } catch (e) {
+      console.error("Failed to save invoice number", e);
     }
   }
 
@@ -221,6 +234,7 @@ export function EntregasPanel() {
                               <th className="px-2 w-32">Local</th>
                               <th className="px-2 w-32">Titularidade</th>
                               <th className="px-2 w-28">Previsão</th>
+                              {activeTab === "outbound" && <th className="px-2 w-36"><div className="flex items-center gap-1"><FileCheck className="w-3 h-3" /> NF-e Venda</div></th>}
                               <th className="px-2 w-32 text-center">Ação</th>
                             </tr>
                           </thead>
@@ -250,6 +264,22 @@ export function EntregasPanel() {
                                       disabled={isChecked}
                                     />
                                   </td>
+                                  {activeTab === "outbound" && (
+                                    <td className="px-2 py-2.5">
+                                      <input
+                                        type="text"
+                                        placeholder="Nº NF-e"
+                                        defaultValue={item.invoiceNumber || ""}
+                                        onBlur={(e) => saveInvoiceNumber(item.id, e.target.value)}
+                                        className={cn(
+                                          "w-full text-xs font-medium px-2 py-1 rounded border transition-all focus:outline-none focus:ring-1",
+                                          item.invoiceNumber
+                                            ? "bg-emerald-50 border-emerald-300 text-emerald-700 focus:ring-emerald-500"
+                                            : "bg-white border-zinc-300 text-zinc-700 focus:ring-indigo-500"
+                                        )}
+                                      />
+                                    </td>
+                                  )}
                                   <td className="px-2 py-2.5 text-center">
                                     <button
                                       onClick={() => toggleStatusItem(item.id)}

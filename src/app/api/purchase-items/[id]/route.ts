@@ -18,6 +18,7 @@ export async function PATCH(
       expectedCustomerDelivery: body.expectedCustomerDelivery ? new Date(body.expectedCustomerDelivery) : undefined,
       buyingLocation: body.buyingLocation !== undefined ? body.buyingLocation : undefined,
       ownership: body.ownership !== undefined ? body.ownership : undefined,
+      invoiceNumber: body.invoiceNumber !== undefined ? (body.invoiceNumber || null) : undefined,
     },
   });
 

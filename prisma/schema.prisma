@@ -105,6 +105,9 @@ model PurchaseItem {
   buyingLocation   String?
   ownership        String?
 
+  // Nota Fiscal de Venda
+  invoiceNumber    String?
+
   // Entrega Granular
   receivedAt       DateTime?
   expectedCustomerDelivery DateTime?
