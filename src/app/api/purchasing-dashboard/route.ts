@@ -13,8 +13,9 @@ export async function GET() {
           include: {
             items: {
               where: {
+                costPrice: null, // Itens SEM custo → ainda em cotação
                 purchaseOrder: {
-                  status: { notIn: ["CANCELED", "QUOTED", "DELIVERED"] }
+                  status: { notIn: ["CANCELED", "DELIVERED"] }
                 }
               },
               include: {
@@ -25,18 +26,21 @@ export async function GET() {
         },
         purchaseOrders: {
           where: {
-            status: { notIn: ["CANCELED", "QUOTED", "DELIVERED"] }
+            status: { notIn: ["CANCELED", "DELIVERED"] },
+            // Só mostra OCs que tenham pelo menos 1 item sem custo
+            items: { some: { costPrice: null } }
           },
           orderBy: { documentNumber: "asc" },
           include: {
-            items: true
+            items: {
+              where: { costPrice: null } // Só traz itens sem custo
+            }
           }
         }
       }
     });
 
-    // 1. Map to remove procurement groups that have 0 valid items
-    // 2. Filter out organizations that have no active OCs or groups
+    // Remove procurement groups vazios e orgs sem dados
     const activeOrgs = organizations
       .map((org: any) => ({
         ...org,

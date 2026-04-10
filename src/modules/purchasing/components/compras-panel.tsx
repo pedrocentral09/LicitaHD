@@ -533,22 +533,8 @@ export function ComprasPanel() {
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-semibold text-zinc-500 px-2 py-0.5 bg-white rounded border border-zinc-200 shadow-sm mr-2">
-                              {oc.items.length} ITENS
+                              {oc.items.length} ITENS PENDENTES
                             </span>
-                            <button
-                              onClick={() => handleFinalizeOC(oc)}
-                              disabled={saving === `fin-${oc.id}`}
-                              className="flex items-center gap-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded px-2 py-1 transition-colors disabled:opacity-50 font-medium text-xs border border-transparent hover:border-emerald-200"
-                              title="Finalizar Cotação e Enviar para Entregas"
-                            >
-                              {saving === `fin-${oc.id}` ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <CheckCircle className="w-4 h-4" />
-                              )}
-                              Finalizar Cotação
-                            </button>
-                            <div className="w-px h-4 bg-zinc-300 mx-1"></div>
                             <button
                               onClick={() => handleDeleteOC(oc.id, oc.documentNumber)}
                               disabled={saving === `del-${oc.id}`}

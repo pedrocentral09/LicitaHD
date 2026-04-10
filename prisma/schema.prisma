@@ -70,6 +70,7 @@ model PurchaseOrder {
   updatedAt DateTime  @updatedAt
 
   items PurchaseItem[]
+  shipments Shipment[]
   accountReceivables AccountReceivable[]
 
   @@unique([organizationId, documentNumber])
@@ -79,6 +80,7 @@ enum OrderStatus {
   DRAFT
   VALIDATED
   QUOTED
+  PARTIAL
   RECEIVED
   DELIVERED
   CANCELED
@@ -118,6 +120,8 @@ model PurchaseItem {
 
   procurementId    String?
   procurementGroup ProcurementGroup? @relation(fields: [procurementId], references: [id])
+
+  shipmentItems    ShipmentItem[]
 }
 
 // -------------------------------------------------------------
@@ -160,4 +164,41 @@ enum ReceivableStatus {
   PENDING
   PAID
   OVERDUE
+}
+
+// -------------------------------------------------------------
+// Módulo: Remessas (Entregas Fracionadas)
+// -------------------------------------------------------------
+model Shipment {
+  id              String         @id @default(uuid())
+  shipmentNumber  Int
+  invoiceNumber   String?
+  status          ShipmentStatus @default(PENDING)
+  notes           String?
+
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+
+  dispatchedAt    DateTime?
+  deliveredAt     DateTime?
+  createdAt       DateTime @default(now())
+
+  items ShipmentItem[]
+}
+
+enum ShipmentStatus {
+  PENDING
+  DISPATCHED
+  DELIVERED
+}
+
+model ShipmentItem {
+  id             String @id @default(uuid())
+  quantity       Float
+
+  shipmentId     String
+  shipment       Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  purchaseItemId String
+  purchaseItem   PurchaseItem @relation(fields: [purchaseItemId], references: [id])
 }
