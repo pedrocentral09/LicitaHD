@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Building2, Plus, Trash2, Edit2, X, Bot, CheckCircle2 } from "lucide-react";
+import { Building2, Plus, Trash2, Edit2, X, Bot, CheckCircle2, Search } from "lucide-react";
 
 interface Org {
   id: string;
@@ -24,6 +24,7 @@ export function OrgaosList() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Form Fields
   const [name, setName] = useState("");
@@ -113,16 +114,34 @@ export function OrgaosList() {
     loadOrgs();
   }
 
+  const filteredOrgs = orgs.filter(o => 
+    o.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (o.cnpj && o.cnpj.includes(searchTerm))
+  );
+
   return (
     <div>
-      {/* Add Button */}
-      <button
-        onClick={() => handleOpenForm()}
-        className="mb-6 flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
-      >
-        <Plus className="h-4 w-4" />
-        Novo Órgão
-      </button>
+      {/* Header Actions */}
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <button
+          onClick={() => handleOpenForm()}
+          className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+        >
+          <Plus className="h-4 w-4" />
+          Novo Órgão
+        </button>
+
+        <div className="relative w-full sm:w-80">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+          <input
+            type="text"
+            placeholder="Pesquisar por nome ou CNPJ..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full rounded-lg border border-zinc-200 bg-white pl-10 pr-4 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-500 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+          />
+        </div>
+      </div>
 
       {/* Form */}
       {showForm && (
@@ -203,14 +222,14 @@ export function OrgaosList() {
 
       {/* List */}
       <div className="space-y-3">
-        {orgs.length === 0 && (
+        {filteredOrgs.length === 0 && (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-zinc-300 py-16 text-center">
             <Building2 className="h-12 w-12 text-zinc-300 mb-3" />
-            <p className="text-sm text-zinc-500">Nenhum órgão cadastrado ainda</p>
-            <p className="text-xs text-zinc-400 mt-1">Clique em &quot;Novo Órgão&quot; para começar</p>
+            <p className="text-sm text-zinc-500">Nenhum órgão encontrado</p>
+            {searchTerm === "" && <p className="text-xs text-zinc-400 mt-1">Clique em &quot;Novo Órgão&quot; para começar</p>}
           </div>
         )}
-        {orgs.map((org) => (
+        {filteredOrgs.map((org) => (
           <div
             key={org.id}
             className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
