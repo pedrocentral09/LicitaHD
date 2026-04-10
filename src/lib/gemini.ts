@@ -84,6 +84,26 @@ export async function extractPurchaseOrderFromPDF(
     ],
     config: {
       responseMimeType: "application/json",
+      responseSchema: {
+        type: "object",
+        properties: {
+          organizationName: { type: "string" },
+          documentNumber: { type: "string" },
+          issuedAt: { type: "string" },
+          sellerName: { type: "string" },
+          items: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                description: { type: "string" },
+                quantity: { type: "number" },
+                unitPriceReturn: { type: "number" }
+              }
+            }
+          }
+        }
+      },
       temperature: 0.1,
     },
   });
@@ -103,9 +123,9 @@ export async function extractPurchaseOrderFromPDF(
     );
   }
 
-  // Validação do schema
+  // Validação do schema (fallback amigável em caso de erro da IA)
   if (!parsed.items || !Array.isArray(parsed.items)) {
-    throw new Error("A resposta da IA não contém os itens esperados (array de objetos).");
+    parsed.items = [];
   }
 
   // Sanitizar e garantir tipos corretos
