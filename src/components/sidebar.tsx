@@ -14,7 +14,8 @@ import {
   Truck,
   LogOut,
   Users,
-  Database
+  Database,
+  BarChart3
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -85,6 +86,12 @@ const navCategories = [
         label: "Reequilíbrio",
         href: "/reequilibrio",
         icon: FileText,
+        roles: ["GOD", "BUYER"]
+      },
+      {
+        label: "Relatório de Margens",
+        href: "/margens",
+        icon: BarChart3,
         roles: ["GOD", "BUYER"]
       },
     ]
