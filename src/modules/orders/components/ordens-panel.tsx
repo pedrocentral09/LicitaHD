@@ -44,6 +44,21 @@ export function OrdensPanel() {
   // Accordion State
   const [expandedOrgs, setExpandedOrgs] = useState<Record<string, boolean>>({});
 
+  // Sort State
+  type SortField = 'oc' | 'date' | 'value' | null;
+  const [sortField, setSortField] = useState<SortField>(null);
+  const [sortAsc, setSortAsc] = useState(true);
+
+  function handleSort(field: SortField) {
+    if (sortField === field) {
+      if (sortAsc) setSortAsc(false);
+      else { setSortField(null); setSortAsc(true); }
+    } else {
+      setSortField(field);
+      setSortAsc(true);
+    }
+  }
+
   function toggleOrg(orgName: string) {
     setExpandedOrgs(prev => ({ ...prev, [orgName]: !prev[orgName] }));
   }
@@ -135,14 +150,20 @@ export function OrdensPanel() {
 
       <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden shadow-sm">
         <table className="w-full text-sm text-left">
-          <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-medium">
+          <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-medium select-none">
             <tr>
-              <th className="px-6 py-4">OC</th>
-              <th className="px-6 py-4">Emissão</th>
+              <th className="px-6 py-4 cursor-pointer hover:bg-zinc-100 transition-colors" onClick={() => handleSort('oc')}>
+                <div className="flex items-center gap-1.5">OC {sortField === 'oc' && <span className="text-xs">{sortAsc ? '↑' : '↓'}</span>}</div>
+              </th>
+              <th className="px-6 py-4 cursor-pointer hover:bg-zinc-100 transition-colors" onClick={() => handleSort('date')}>
+                <div className="flex items-center gap-1.5">Emissão {sortField === 'date' && <span className="text-xs">{sortAsc ? '↑' : '↓'}</span>}</div>
+              </th>
               <th className="px-6 py-4">Órgão</th>
               <th className="px-6 py-4">Status</th>
               <th className="px-6 py-4">Volumes</th>
-              <th className="px-6 py-4 text-right">Valor Total (R$)</th>
+              <th className="px-6 py-4 text-right cursor-pointer hover:bg-zinc-100 transition-colors" onClick={() => handleSort('value')}>
+                <div className="flex items-center justify-end gap-1.5">Valor Total (R$) {sortField === 'value' && <span className="text-xs">{sortAsc ? '↑' : '↓'}</span>}</div>
+              </th>
               <th className="px-6 py-4 text-center">Ações</th>
             </tr>
           </thead>
@@ -204,7 +225,28 @@ export function OrdensPanel() {
                   </tr>
 
                   {/* Order Rows */}
-                  {expandedOrgs[orgName] && orgOrders.map((order) => {
+                  {expandedOrgs[orgName] && (() => {
+                    let sortedOrgOrders = [...orgOrders];
+                    if (sortField) {
+                      sortedOrgOrders.sort((a, b) => {
+                        if (sortField === 'oc') {
+                          return sortAsc ? a.documentNumber.localeCompare(b.documentNumber) : b.documentNumber.localeCompare(a.documentNumber);
+                        }
+                        if (sortField === 'date') {
+                          const dateA = a.issuedAt ? new Date(a.issuedAt).getTime() : 0;
+                          const dateB = b.issuedAt ? new Date(b.issuedAt).getTime() : 0;
+                          return sortAsc ? dateA - dateB : dateB - dateA;
+                        }
+                        if (sortField === 'value') {
+                          const valA = a.items.reduce((s, i) => s + (i.quantity * i.unitPriceReturn), 0);
+                          const valB = b.items.reduce((s, i) => s + (i.quantity * i.unitPriceReturn), 0);
+                          return sortAsc ? valA - valB : valB - valA;
+                        }
+                        return 0;
+                      });
+                    }
+
+                    return sortedOrgOrders.map((order) => {
                     const totalAmount = order.items.reduce((s, i) => s + (i.quantity * i.unitPriceReturn), 0);
                     
                     const statusColors: any = {
@@ -269,7 +311,8 @@ export function OrdensPanel() {
                         </td>
                       </tr>
                     );
-                  })}
+                    });
+                  })()}
                 </React.Fragment>
               ));
             })()}
