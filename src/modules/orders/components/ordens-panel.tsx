@@ -230,7 +230,9 @@ export function OrdensPanel() {
                     if (sortField) {
                       sortedOrgOrders.sort((a, b) => {
                         if (sortField === 'oc') {
-                          return sortAsc ? a.documentNumber.localeCompare(b.documentNumber) : b.documentNumber.localeCompare(a.documentNumber);
+                          return sortAsc 
+                            ? a.documentNumber.localeCompare(b.documentNumber, undefined, { numeric: true, sensitivity: 'base' }) 
+                            : b.documentNumber.localeCompare(a.documentNumber, undefined, { numeric: true, sensitivity: 'base' });
                         }
                         if (sortField === 'date') {
                           const dateA = a.issuedAt ? new Date(a.issuedAt).getTime() : 0;
