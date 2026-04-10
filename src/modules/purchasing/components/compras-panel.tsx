@@ -27,6 +27,7 @@ interface ProcurementGroup {
 interface PurchaseOrder {
   id: string;
   documentNumber: string;
+  issuedAt: string | null;
   items: PurchaseItem[];
 }
 
@@ -462,7 +463,12 @@ export function ComprasPanel() {
                     {org.purchaseOrders.map((oc) => (
                       <div key={oc.id} className="border border-zinc-300 rounded-lg overflow-hidden">
                         <div className="bg-zinc-100 px-4 py-2 border-b border-zinc-300 flex justify-between items-center">
-                          <span className="font-bold text-zinc-800">Ordem de Compra: {oc.documentNumber}</span>
+                          <div className="flex items-center gap-3">
+                            <span className="font-bold text-zinc-800">Ordem de Compra: {oc.documentNumber}</span>
+                            <span className="text-xs text-zinc-500 bg-white px-2 py-0.5 rounded border border-zinc-200">
+                              Emissão: {oc.issuedAt ? new Date(oc.issuedAt + (oc.issuedAt.includes('T') ? '' : 'T00:00:00')).toLocaleDateString("pt-BR") : "-"}
+                            </span>
+                          </div>
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-semibold text-zinc-500 px-2 py-0.5 bg-white rounded border border-zinc-200 shadow-sm mr-2">
                               {oc.items.length} ITENS

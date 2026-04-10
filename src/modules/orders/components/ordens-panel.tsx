@@ -138,6 +138,7 @@ export function OrdensPanel() {
           <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-medium">
             <tr>
               <th className="px-6 py-4">OC</th>
+              <th className="px-6 py-4">Emissão</th>
               <th className="px-6 py-4">Órgão</th>
               <th className="px-6 py-4">Status</th>
               <th className="px-6 py-4">Volumes</th>
@@ -150,7 +151,7 @@ export function OrdensPanel() {
               if (orders.length === 0) {
                 return (
                   <tr>
-                    <td colSpan={6} className="px-6 py-10 text-center text-zinc-400">
+                    <td colSpan={7} className="px-6 py-10 text-center text-zinc-400">
                       Nenhuma Ordem de Compra importada ainda.
                     </td>
                   </tr>
@@ -166,7 +167,7 @@ export function OrdensPanel() {
               if (filteredOrders.length === 0) {
                 return (
                   <tr>
-                    <td colSpan={6} className="px-6 py-10 text-center text-zinc-400">
+                    <td colSpan={7} className="px-6 py-10 text-center text-zinc-400">
                       Nenhuma ordem encontrada para a pesquisa: {searchTerm}
                     </td>
                   </tr>
@@ -188,7 +189,7 @@ export function OrdensPanel() {
                     className="bg-zinc-100/80 cursor-pointer hover:bg-zinc-200/50 transition"
                     onClick={() => toggleOrg(orgName)}
                   >
-                    <td colSpan={6} className="px-6 py-4 font-semibold text-zinc-700">
+                    <td colSpan={7} className="px-6 py-4 font-semibold text-zinc-700">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           {expandedOrgs[orgName] ? <ChevronDown className="w-5 h-5 text-zinc-400" /> : <ChevronRight className="w-5 h-5 text-zinc-400" />}
@@ -221,6 +222,9 @@ export function OrdensPanel() {
                             <FileText className="w-4 h-4 text-indigo-500" />
                             {order.documentNumber}
                           </div>
+                        </td>
+                        <td className="px-6 py-4 font-medium text-zinc-500 text-sm whitespace-nowrap">
+                          {order.issuedAt ? new Date(order.issuedAt + (order.issuedAt.includes('T') ? '' : 'T00:00:00')).toLocaleDateString("pt-BR") : "-"}
                         </td>
                         <td className="px-6 py-4 font-medium text-zinc-500 text-xs truncate max-w-[200px]">
                           {orgName}
