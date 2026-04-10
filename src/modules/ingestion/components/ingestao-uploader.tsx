@@ -148,6 +148,19 @@ export function IngestaoUploader() {
     }
   }
 
+  function handleManualEntry() {
+    setError(null);
+    setResult({
+      organizationName: "",
+      documentNumber: "",
+      issuedAt: new Date().toISOString().split('T')[0],
+      sellerName: "",
+      items: [
+        { description: "", quantity: 1, unitPriceReturn: 0 }
+      ]
+    });
+  }
+
   async function handleSave() {
     if (!result || !selectedOrgId) return;
     setIsSaving(true);
@@ -206,6 +219,18 @@ export function IngestaoUploader() {
         />
       </div>
 
+      {/* Manual Entry Bypass */}
+      {!file && !result && (
+        <div className="flex justify-center -mt-2">
+          <button
+            onClick={handleManualEntry}
+            className="text-sm font-medium text-indigo-600 hover:text-indigo-800 underline underline-offset-4 transition-colors"
+          >
+            Ou clique aqui para digitar a Ordem de Compra manualmente
+          </button>
+        </div>
+      )}
+
       {/* File Selected */}
       {file && !result && (
         <div className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
@@ -249,7 +274,7 @@ export function IngestaoUploader() {
           <div className="border-b border-zinc-200 p-5">
             <h3 className="text-base font-semibold text-zinc-900 flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-              Dados Extraídos — Validação Obrigatória
+              Preenchimento e Validação Obrigatória
             </h3>
             <p className="mt-1 text-xs text-zinc-500">
               Confira cuidadosamente cada campo antes de aprovar. A responsabilidade da validação é do operador.
