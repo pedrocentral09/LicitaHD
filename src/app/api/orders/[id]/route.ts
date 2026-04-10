@@ -36,18 +36,41 @@ export async function PATCH(
         });
       }
 
+      // Fetch Org ID
+      const order = await prisma.purchaseOrder.findUnique({
+        where: { id },
+        select: { organizationId: true }
+      });
+      const orgId = order?.organizationId;
+
       // Process Payload
       for (const item of body.items) {
+        const desc = typeof item.description === 'string' ? item.description.trim().toUpperCase() : "SEM DESCRIÇÃO";
+
+        let procurementId = null;
+        if (orgId) {
+          let group = await prisma.procurementGroup.findFirst({
+            where: { organizationId: orgId, description: desc }
+          });
+          if (!group) {
+            group = await prisma.procurementGroup.create({
+              data: { organizationId: orgId, description: desc }
+            });
+          }
+          procurementId = group.id;
+        }
+
         if (item.id.startsWith("new-")) {
           // Create new item
           await prisma.purchaseItem.create({
             data: {
-              description: item.description,
+              description: desc,
               quantity: Number(item.quantity) || 0,
               unitPriceReturn: Number(item.unitPriceReturn) || 0,
               active: item.active !== undefined ? item.active : true,
               purchaseOrderId: id,
-              conversionFactor: 1
+              conversionFactor: 1,
+              procurementId
             }
           });
         } else {
@@ -55,10 +78,11 @@ export async function PATCH(
           await prisma.purchaseItem.update({
             where: { id: item.id },
             data: {
-              description: item.description,
+              description: desc,
               quantity: Number(item.quantity) || 0,
               unitPriceReturn: Number(item.unitPriceReturn) || 0,
               active: item.active !== undefined ? item.active : true,
+              procurementId
             },
           });
         }

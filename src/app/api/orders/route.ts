@@ -42,7 +42,7 @@ export async function POST(req: Request) {
       status: "DRAFT",
       items: {
         create: body.items.map((item: { description: string; quantity: number; unitPriceReturn: number }) => ({
-          description: item.description,
+          description: item.description.trim().toUpperCase(),
           quantity: item.quantity,
           unitPriceReturn: item.unitPriceReturn,
         })),
@@ -57,7 +57,7 @@ export async function POST(req: Request) {
       where: {
         organizationId_description: {
           organizationId: body.organizationId,
-          description: item.description,
+          description: item.description.trim().toUpperCase(),
         },
       },
     });
@@ -70,7 +70,7 @@ export async function POST(req: Request) {
     } else {
       const group = await prisma.procurementGroup.create({
         data: {
-          description: item.description,
+          description: item.description.trim().toUpperCase(),
           organizationId: body.organizationId,
         },
       });
