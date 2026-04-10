@@ -230,9 +230,18 @@ export function OrdensPanel() {
                     if (sortField) {
                       sortedOrgOrders.sort((a, b) => {
                         if (sortField === 'oc') {
+                          // Extração brutal do primeiro bloco numérico para garantir ordem matemática absoluta
+                          const numA = parseInt((a.documentNumber.match(/\d+/) || ["0"])[0], 10);
+                          const numB = parseInt((b.documentNumber.match(/\d+/) || ["0"])[0], 10);
+                          
+                          if (numA !== numB) {
+                            return sortAsc ? numA - numB : numB - numA;
+                          }
+                          
+                          // Fallback para ordem alfabética caso tenham números iguais (ex: OC-10A e OC-10B)
                           return sortAsc 
-                            ? a.documentNumber.localeCompare(b.documentNumber, undefined, { numeric: true, sensitivity: 'base' }) 
-                            : b.documentNumber.localeCompare(a.documentNumber, undefined, { numeric: true, sensitivity: 'base' });
+                            ? a.documentNumber.localeCompare(b.documentNumber) 
+                            : b.documentNumber.localeCompare(a.documentNumber);
                         }
                         if (sortField === 'date') {
                           const dateA = a.issuedAt ? new Date(a.issuedAt).getTime() : 0;
