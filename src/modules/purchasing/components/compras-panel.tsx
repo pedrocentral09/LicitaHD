@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ShoppingCart, Save, Loader2, ChevronDown, ChevronUp, Package, FileText, Trash2, CheckCircle, Search } from "lucide-react";
+import { ShoppingCart, Save, Loader2, ChevronDown, ChevronUp, Package, FileText, Trash2, CheckCircle, Search, ArrowUpDown } from "lucide-react";
 
 interface PurchaseItem {
   id: string;
@@ -48,6 +48,21 @@ export function ComprasPanel() {
   // Formulários locais
   const [groupDrafts, setGroupDrafts] = useState<Record<string, any>>({});
   const [itemDrafts, setItemDrafts] = useState<Record<string, any>>({});
+
+  // Sort State
+  type SortField = 'name' | 'ocs' | 'value' | null;
+  const [sortField, setSortField] = useState<SortField>(null);
+  const [sortAsc, setSortAsc] = useState(true);
+
+  function handleSort(field: SortField) {
+    if (sortField === field) {
+      if (sortAsc) setSortAsc(false);
+      else { setSortField(null); setSortAsc(true); }
+    } else {
+      setSortField(field);
+      setSortAsc(true);
+    }
+  }
 
   async function loadDashboard() {
     try {
@@ -249,6 +264,24 @@ export function ComprasPanel() {
     return { ...org, purchaseOrders: filteredOcs };
   }).filter(org => org.name.toLowerCase().includes(searchTerm.toLowerCase()) || org.purchaseOrders.length > 0);
 
+  // Apply sorting
+  if (sortField) {
+    filteredOrganizations.sort((a, b) => {
+      if (sortField === 'name') {
+        return sortAsc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+      }
+      if (sortField === 'ocs') {
+        return sortAsc ? a.purchaseOrders.length - b.purchaseOrders.length : b.purchaseOrders.length - a.purchaseOrders.length;
+      }
+      if (sortField === 'value') {
+        const valA = a.purchaseOrders.reduce((s, oc) => s + oc.items.reduce((si, i) => si + i.quantity * i.unitPriceReturn, 0), 0);
+        const valB = b.purchaseOrders.reduce((s, oc) => s + oc.items.reduce((si, i) => si + i.quantity * i.unitPriceReturn, 0), 0);
+        return sortAsc ? valA - valB : valB - valA;
+      }
+      return 0;
+    });
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -268,6 +301,24 @@ export function ComprasPanel() {
             className="w-full pl-10 pr-4 py-2 text-sm border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-sm"
           />
         </div>
+      </div>
+
+      {/* Sort Bar */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-zinc-400 font-medium mr-1"><ArrowUpDown className="w-3.5 h-3.5 inline -mt-0.5" /> Ordenar por:</span>
+        {([['name', 'Nome'], ['ocs', 'Qtd OCs'], ['value', 'Valor Total']] as const).map(([field, label]) => (
+          <button
+            key={field}
+            onClick={() => handleSort(field)}
+            className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
+              sortField === field
+                ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                : 'bg-white text-zinc-600 border-zinc-200 hover:border-indigo-300 hover:text-indigo-600'
+            }`}
+          >
+            {label} {sortField === field && <span className="ml-0.5">{sortAsc ? '↑' : '↓'}</span>}
+          </button>
+        ))}
       </div>
 
       {filteredOrganizations.length === 0 && (
@@ -335,7 +386,12 @@ export function ComprasPanel() {
                     <p className="text-xs text-zinc-500 mb-2">
                       Alterações feitas nesta tela serão aplicadas automaticamente em todos os itens que compartilham o mesmo produto.
                     </p>
-                    {org.procurementGroups.map((group) => {
+                    {[...org.procurementGroups]
+                      .sort((a, b) => {
+                        // sort groups by description alphabetically
+                        return a.description.localeCompare(b.description);
+                      })
+                      .map((group) => {
                       const totalQty = group.items.reduce((s, i) => s + i.quantity, 0);
                       const draft = getGroupDraft(group.id, group.items);
                       
@@ -460,7 +516,13 @@ export function ComprasPanel() {
                     <p className="text-xs text-zinc-500 mb-2">
                       Altere o custo e a previsão de entrega de forma independente para cada Ordem de Compra.
                     </p>
-                    {org.purchaseOrders.map((oc) => (
+                    {[...org.purchaseOrders]
+                      .sort((a, b) => {
+                        const numA = parseInt((a.documentNumber.match(/\d+/) || ["0"])[0], 10);
+                        const numB = parseInt((b.documentNumber.match(/\d+/) || ["0"])[0], 10);
+                        return numA - numB;
+                      })
+                      .map((oc) => (
                       <div key={oc.id} className="border border-zinc-300 rounded-lg overflow-hidden">
                         <div className="bg-zinc-100 px-4 py-2 border-b border-zinc-300 flex justify-between items-center">
                           <div className="flex items-center gap-3">
