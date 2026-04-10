@@ -33,8 +33,54 @@ export async function PATCH(
     const shipment = await prisma.shipment.update({
       where: { id },
       data,
-      include: { items: true },
+      include: {
+        items: {
+          include: {
+            purchaseItem: { select: { unitPriceReturn: true, description: true } }
+          }
+        },
+        purchaseOrder: { select: { organizationId: true, documentNumber: true } }
+      },
     });
+
+    // Auto-generate AccountReceivable when shipment is delivered
+    if (body.status === "DELIVERED" && shipment.purchaseOrder) {
+      // Check if there's already a receivable for this shipment
+      const existing = await prisma.accountReceivable.findUnique({
+        where: { shipmentId: shipment.id }
+      });
+
+      if (!existing) {
+        const totalAmount = shipment.items.reduce(
+          (sum, si) => sum + si.quantity * si.purchaseItem.unitPriceReturn,
+          0
+        );
+
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 30); // 30 dias do vencimento
+
+        const nfe = shipment.invoiceNumber ? ` — NF-e ${shipment.invoiceNumber}` : "";
+
+        await prisma.accountReceivable.create({
+          data: {
+            title: `OC ${shipment.purchaseOrder.documentNumber} — Remessa #${shipment.shipmentNumber}${nfe}`,
+            amount: totalAmount,
+            dueDate,
+            organizationId: shipment.purchaseOrder.organizationId,
+            purchaseOrderId: shipment.purchaseOrderId,
+            shipmentId: shipment.id,
+            status: "PENDING",
+          },
+        });
+      }
+    }
+
+    // If reverted from DELIVERED, delete auto-generated receivable
+    if (body.status === "DISPATCHED" || body.status === "PENDING") {
+      await prisma.accountReceivable.deleteMany({
+        where: { shipmentId: shipment.id }
+      });
+    }
 
     // Check if all items of the OC are fully delivered via shipments
     const oc = await prisma.purchaseOrder.findUnique({

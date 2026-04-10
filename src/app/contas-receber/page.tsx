@@ -1,7 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Plus, Check, Loader2, AlertCircle, Clock, Search, X } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
+import {
+  Plus,
+  Check,
+  Loader2,
+  X,
+  Search,
+  DollarSign,
+  AlertTriangle,
+  TrendingUp,
+  Clock,
+  ArrowUpDown,
+  Filter,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Receivable {
@@ -13,6 +25,19 @@ interface Receivable {
   status: "PENDING" | "PAID" | "OVERDUE";
   organization: { name: string };
   purchaseOrder?: { documentNumber: string; sellerName: string | null };
+  shipment?: { shipmentNumber: number; invoiceNumber: string | null; status: string } | null;
+}
+
+interface Stats {
+  totalPending: number;
+  totalOverdue: number;
+  totalPaidThisMonth: number;
+  totalAll: number;
+  totalPaid: number;
+  count: number;
+  overdueCount: number;
+  pendingCount: number;
+  paidCount: number;
 }
 
 interface Org {
@@ -20,16 +45,22 @@ interface Org {
   name: string;
 }
 
+type StatusFilter = "all" | "PENDING" | "PAID" | "OVERDUE";
+type SortField = "dueDate" | "amount" | "org" | null;
+
 export default function ContasReceberPage() {
   const [data, setData] = useState<Receivable[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [orgs, setOrgs] = useState<Org[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [sortField, setSortField] = useState<SortField>("dueDate");
+  const [sortAsc, setSortAsc] = useState(true);
 
-  // Modal state
+  // Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Form State
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -39,7 +70,8 @@ export default function ContasReceberPage() {
     try {
       const res = await fetch("/api/receivables");
       const json = await res.json();
-      setData(json);
+      setData(json.items || []);
+      setStats(json.stats || null);
     } catch (err) {
       console.error(err);
     } finally {
@@ -69,14 +101,8 @@ export default function ContasReceberPage() {
       const res = await fetch("/api/receivables", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          amount,
-          dueDate,
-          organizationId: orgId
-        })
+        body: JSON.stringify({ title, amount, dueDate, organizationId: orgId }),
       });
-
       if (res.ok) {
         setIsModalOpen(false);
         setTitle("");
@@ -84,8 +110,6 @@ export default function ContasReceberPage() {
         setDueDate("");
         setOrgId("");
         fetchReceivables();
-      } else {
-        alert("Erro ao criar Conta a Receber.");
       }
     } catch (error) {
       console.error(error);
@@ -95,113 +119,353 @@ export default function ContasReceberPage() {
   };
 
   const markAsPaid = async (id: string) => {
-    try {
-      await fetch(`/api/receivables/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "PAID" })
-      });
-      fetchReceivables();
-    } catch (err) {
-      console.error(err);
+    await fetch(`/api/receivables/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "PAID" }),
+    });
+    fetchReceivables();
+  };
+
+  const fmt = (val: number) =>
+    new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(val);
+
+  const fmtDate = (d: string) =>
+    new Date(d).toLocaleDateString("pt-BR", { timeZone: "UTC" });
+
+  function handleSort(field: SortField) {
+    if (sortField === field) {
+      if (sortAsc) setSortAsc(false);
+      else { setSortField(null); setSortAsc(true); }
+    } else {
+      setSortField(field);
+      setSortAsc(true);
     }
-  };
+  }
 
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
-  };
+  const filtered = useMemo(() => {
+    let result = [...data];
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("pt-BR", { timeZone: "UTC" });
-  };
+    if (searchTerm) {
+      const s = searchTerm.toLowerCase();
+      result = result.filter(
+        (r) =>
+          r.title.toLowerCase().includes(s) ||
+          r.organization.name.toLowerCase().includes(s) ||
+          r.purchaseOrder?.documentNumber?.toLowerCase().includes(s)
+      );
+    }
+
+    if (statusFilter !== "all") {
+      result = result.filter((r) => r.status === statusFilter);
+    }
+
+    if (sortField) {
+      result.sort((a, b) => {
+        if (sortField === "dueDate") {
+          return sortAsc
+            ? new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+            : new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
+        }
+        if (sortField === "amount") {
+          return sortAsc ? a.amount - b.amount : b.amount - a.amount;
+        }
+        if (sortField === "org") {
+          return sortAsc
+            ? a.organization.name.localeCompare(b.organization.name)
+            : b.organization.name.localeCompare(a.organization.name);
+        }
+        return 0;
+      });
+    }
+
+    return result;
+  }, [data, searchTerm, statusFilter, sortField, sortAsc]);
+
+  // Days until due
+  function daysUntil(dateStr: string): number {
+    const d = new Date(dateStr);
+    const now = new Date();
+    return Math.ceil((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  }
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-8 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-900">Contas a Receber</h1>
+          <h1 className="text-2xl font-bold text-zinc-900 flex items-center gap-2">
+            <DollarSign className="w-6 h-6 text-emerald-500" />
+            Contas a Receber
+          </h1>
           <p className="mt-1 text-sm text-zinc-500">
-            Gerencie os pagamentos provenientes dos contratos e empenhos
+            Faturamento automático por remessa + cobranças manuais
           </p>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+          className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 shadow-sm"
         >
           <Plus className="h-4 w-4" />
           Nova Cobrança
         </button>
       </div>
 
-      <div className="rounded-xl border border-zinc-200 bg-white shadow-sm overflow-hidden">
+      {/* KPI Cards */}
+      {stats && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-zinc-500 font-medium">A Receber (Pendente)</p>
+              <Clock className="w-4 h-4 text-amber-500" />
+            </div>
+            <p className="text-2xl font-bold text-amber-600 mt-2">{fmt(stats.totalPending)}</p>
+            <p className="text-[10px] text-zinc-400 mt-1">{stats.pendingCount} títulos</p>
+          </div>
+
+          <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-zinc-500 font-medium">Vencido (Atrasado)</p>
+              <AlertTriangle className="w-4 h-4 text-red-500" />
+            </div>
+            <p className="text-2xl font-bold text-red-600 mt-2">{fmt(stats.totalOverdue)}</p>
+            <p className="text-[10px] text-zinc-400 mt-1">{stats.overdueCount} títulos</p>
+          </div>
+
+          <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-zinc-500 font-medium">Recebido (Mês Atual)</p>
+              <TrendingUp className="w-4 h-4 text-emerald-500" />
+            </div>
+            <p className="text-2xl font-bold text-emerald-600 mt-2">
+              {fmt(stats.totalPaidThisMonth)}
+            </p>
+            <p className="text-[10px] text-zinc-400 mt-1">{stats.paidCount} pagos no total</p>
+          </div>
+
+          <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-zinc-500 font-medium">Total Geral</p>
+              <DollarSign className="w-4 h-4 text-indigo-500" />
+            </div>
+            <p className="text-2xl font-bold text-zinc-900 mt-2">{fmt(stats.totalAll)}</p>
+            <p className="text-[10px] text-zinc-400 mt-1">{stats.count} cobranças registradas</p>
+          </div>
+        </div>
+      )}
+
+      {/* Filters */}
+      <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-sm flex flex-wrap items-center gap-4">
+        <div className="relative flex-1 min-w-[200px] max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+          <input
+            type="text"
+            placeholder="Buscar por título, órgão ou OC..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 text-sm border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+          />
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <Filter className="w-4 h-4 text-zinc-400" />
+          {(
+            [
+              ["all", "Todos"],
+              ["PENDING", "Pendentes"],
+              ["OVERDUE", "Atrasados"],
+              ["PAID", "Pagos"],
+            ] as const
+          ).map(([val, label]) => (
+            <button
+              key={val}
+              onClick={() => setStatusFilter(val)}
+              className={cn(
+                "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all",
+                statusFilter === val
+                  ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                  : "bg-white text-zinc-600 border-zinc-200 hover:border-indigo-300 hover:text-indigo-600"
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
         {loading ? (
           <div className="p-12 flex justify-center text-zinc-400">
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
         ) : (
-          <table className="w-full text-sm text-left">
-            <thead className="bg-zinc-50 border-b border-zinc-200">
-              <tr>
-                <th className="px-6 py-3 font-semibold text-zinc-500">Órgão</th>
-                <th className="px-6 py-3 font-semibold text-zinc-500">Detalhes</th>
-                <th className="px-6 py-3 font-semibold text-zinc-500 text-right">Valor</th>
-                <th className="px-6 py-3 font-semibold text-zinc-500 text-center">Vencimento</th>
-                <th className="px-6 py-3 font-semibold text-zinc-500 text-center">Status</th>
-                <th className="px-6 py-3 font-semibold text-zinc-500 text-right">Ação</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100">
-              {data.map((item) => (
-                <tr key={item.id} className="hover:bg-zinc-50/50">
-                  <td className="px-6 py-4 font-medium text-zinc-900">
-                    {item.organization.name}
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-zinc-900">{item.title}</p>
-                    {item.purchaseOrder && (
-                      <p className="text-xs text-zinc-500 mt-0.5">OF: {item.purchaseOrder.documentNumber}</p>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 font-mono text-zinc-900 text-right">
-                    {formatCurrency(item.amount)}
-                  </td>
-                  <td className="px-6 py-4 text-zinc-500 text-center">
-                    {formatDate(item.dueDate)}
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <span
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left min-w-[800px]">
+              <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 text-xs font-medium">
+                <tr>
+                  <th
+                    className="px-5 py-3 cursor-pointer hover:bg-zinc-100 transition-colors"
+                    onClick={() => handleSort("org")}
+                  >
+                    <div className="flex items-center gap-1">
+                      Órgão {sortField === "org" && <span>{sortAsc ? "↑" : "↓"}</span>}
+                    </div>
+                  </th>
+                  <th className="px-5 py-3">Título / Referência</th>
+                  <th
+                    className="px-5 py-3 text-right cursor-pointer hover:bg-zinc-100 transition-colors"
+                    onClick={() => handleSort("amount")}
+                  >
+                    <div className="flex items-center gap-1 justify-end">
+                      Valor {sortField === "amount" && <span>{sortAsc ? "↑" : "↓"}</span>}
+                    </div>
+                  </th>
+                  <th
+                    className="px-5 py-3 text-center cursor-pointer hover:bg-zinc-100 transition-colors"
+                    onClick={() => handleSort("dueDate")}
+                  >
+                    <div className="flex items-center gap-1 justify-center">
+                      Vencimento {sortField === "dueDate" && <span>{sortAsc ? "↑" : "↓"}</span>}
+                    </div>
+                  </th>
+                  <th className="px-5 py-3 text-center">Status</th>
+                  <th className="px-5 py-3 text-center">Origem</th>
+                  <th className="px-5 py-3 text-right">Ação</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-16 text-center text-zinc-400">
+                      <div className="flex flex-col items-center gap-2">
+                        <DollarSign className="w-8 h-8 text-zinc-300" />
+                        <p className="font-medium">Nenhuma cobrança encontrada</p>
+                        <p className="text-xs">
+                          Cobranças são geradas automaticamente quando remessas são
+                          entregues.
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                {filtered.map((item) => {
+                  const days = daysUntil(item.dueDate);
+                  const isUrgent = item.status !== "PAID" && days <= 7 && days >= 0;
+
+                  return (
+                    <tr
+                      key={item.id}
                       className={cn(
-                        "px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wide",
-                        item.status === "PAID" && "bg-emerald-100 text-emerald-700",
-                        item.status === "PENDING" && "bg-amber-100 text-amber-700",
-                        item.status === "OVERDUE" && "bg-red-100 text-red-700"
+                        "hover:bg-zinc-50/50 transition-colors",
+                        item.status === "OVERDUE" && "bg-red-50/40",
+                        isUrgent && item.status === "PENDING" && "bg-amber-50/40"
                       )}
                     >
-                      {item.status === "PAID" ? "PAGO" : item.status === "PENDING" ? "PENDENTE" : "ATRASADO"}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    {item.status !== "PAID" && (
-                      <button
-                        onClick={() => markAsPaid(item.id)}
-                        className="p-1.5 bg-emerald-50 text-emerald-600 rounded-md hover:bg-emerald-100 transition-colors"
-                        title="Marcar como Pago"
-                      >
-                        <Check className="h-4 w-4" />
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {data.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-zinc-500">
-                    Nenhuma conta a receber encontrada.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                      <td className="px-5 py-4 font-medium text-zinc-900 max-w-[180px] truncate">
+                        {item.organization.name}
+                      </td>
+                      <td className="px-5 py-4">
+                        <p className="text-zinc-900 font-medium">{item.title}</p>
+                        {item.purchaseOrder && (
+                          <p className="text-[10px] text-zinc-400 mt-0.5">
+                            OC: {item.purchaseOrder.documentNumber}
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-5 py-4 font-mono text-zinc-900 text-right font-bold">
+                        {fmt(item.amount)}
+                      </td>
+                      <td className="px-5 py-4 text-center">
+                        <span className="text-zinc-700">{fmtDate(item.dueDate)}</span>
+                        {item.status !== "PAID" && (
+                          <p
+                            className={cn(
+                              "text-[10px] font-medium mt-0.5",
+                              days < 0
+                                ? "text-red-600"
+                                : days <= 7
+                                ? "text-amber-600"
+                                : "text-zinc-400"
+                            )}
+                          >
+                            {days < 0
+                              ? `${Math.abs(days)}d atrasado`
+                              : days === 0
+                              ? "Vence hoje"
+                              : `em ${days}d`}
+                          </p>
+                        )}
+                        {item.status === "PAID" && item.paidAt && (
+                          <p className="text-[10px] text-emerald-600 font-medium mt-0.5">
+                            Pago em {fmtDate(item.paidAt)}
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-5 py-4 text-center">
+                        <span
+                          className={cn(
+                            "px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide",
+                            item.status === "PAID" &&
+                              "bg-emerald-100 text-emerald-700",
+                            item.status === "PENDING" &&
+                              "bg-amber-100 text-amber-700",
+                            item.status === "OVERDUE" &&
+                              "bg-red-100 text-red-700"
+                          )}
+                        >
+                          {item.status === "PAID"
+                            ? "PAGO"
+                            : item.status === "PENDING"
+                            ? "PENDENTE"
+                            : "ATRASADO"}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-center">
+                        {item.shipment ? (
+                          <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded font-medium">
+                            Auto — Remessa #{item.shipment.shipmentNumber}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] bg-zinc-100 text-zinc-500 border border-zinc-200 px-2 py-0.5 rounded font-medium">
+                            Manual
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        {item.status !== "PAID" && (
+                          <button
+                            onClick={() => markAsPaid(item.id)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg transition-all text-xs font-bold border border-emerald-200 ml-auto"
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                            Recebido
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Footer summary */}
+        {filtered.length > 0 && (
+          <div className="border-t border-zinc-200 bg-zinc-50 px-5 py-3 flex items-center justify-between text-xs text-zinc-500">
+            <span>
+              {filtered.length} cobrança{filtered.length !== 1 && "s"} exibida
+              {filtered.length !== 1 && "s"}
+            </span>
+            <span className="font-bold text-zinc-700">
+              Total filtrado:{" "}
+              {fmt(filtered.reduce((s, r) => s + r.amount, 0))}
+            </span>
+          </div>
         )}
       </div>
 
@@ -210,15 +474,22 @@ export default function ContasReceberPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
             <div className="flex justify-between items-center p-5 border-b border-zinc-100">
-              <h2 className="text-lg font-semibold text-zinc-900">Nova Cobrança</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-zinc-400 hover:text-zinc-700">
+              <h2 className="text-lg font-semibold text-zinc-900">
+                Nova Cobrança Manual
+              </h2>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-zinc-400 hover:text-zinc-700"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            
+
             <form onSubmit={handleCreate} className="p-5 space-y-4">
               <div>
-                <label className="block text-xs font-medium text-zinc-700 mb-1">Título / Ref.</label>
+                <label className="block text-xs font-medium text-zinc-700 mb-1">
+                  Título / Ref.
+                </label>
                 <input
                   required
                   type="text"
@@ -230,7 +501,9 @@ export default function ContasReceberPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-zinc-700 mb-1">Órgão</label>
+                <label className="block text-xs font-medium text-zinc-700 mb-1">
+                  Órgão
+                </label>
                 <select
                   required
                   className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none"
@@ -238,13 +511,19 @@ export default function ContasReceberPage() {
                   onChange={(e) => setOrgId(e.target.value)}
                 >
                   <option value="">Selecione...</option>
-                  {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                  {orgs.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-zinc-700 mb-1">Valor (R$)</label>
+                  <label className="block text-xs font-medium text-zinc-700 mb-1">
+                    Valor (R$)
+                  </label>
                   <input
                     required
                     type="number"
@@ -256,7 +535,9 @@ export default function ContasReceberPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-zinc-700 mb-1">Vencimento</label>
+                  <label className="block text-xs font-medium text-zinc-700 mb-1">
+                    Vencimento
+                  </label>
                   <input
                     required
                     type="date"
@@ -271,7 +552,7 @@ export default function ContasReceberPage() {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-zinc-600 hover:text-zinc-900"
+                  className="px-4 py-2 text-sm font-medium text-zinc-600 hover:text-zinc-900 border border-zinc-300 rounded-lg"
                 >
                   Cancelar
                 </button>
@@ -280,7 +561,11 @@ export default function ContasReceberPage() {
                   disabled={isSubmitting}
                   className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
                 >
-                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  {isSubmitting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Check className="h-4 w-4" />
+                  )}
                   Confirmar
                 </button>
               </div>

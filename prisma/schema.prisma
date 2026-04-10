@@ -156,6 +156,9 @@ model AccountReceivable {
   purchaseOrderId String?
   purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
 
+  shipmentId      String?  @unique
+  shipment        Shipment? @relation(fields: [shipmentId], references: [id])
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -184,6 +187,7 @@ model Shipment {
   createdAt       DateTime @default(now())
 
   items ShipmentItem[]
+  accountReceivable AccountReceivable?
 }
 
 enum ShipmentStatus {
