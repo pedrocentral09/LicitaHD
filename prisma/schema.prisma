@@ -38,6 +38,7 @@ model Organization {
   uf        String?  @db.VarChar(2)
   isAiGenerated Boolean @default(false)
   createdAt DateTime @default(now())
+  deliveryDays Int?
 
   purchaseOrders    PurchaseOrder[]
   procurementGroups ProcurementGroup[]
