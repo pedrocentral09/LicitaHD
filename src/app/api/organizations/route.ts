@@ -17,6 +17,7 @@ export async function POST(req: Request) {
       cnpj: body.cnpj || null,
       uf: body.uf || null,
       isAiGenerated: body.isAiGenerated || false,
+      deliveryDays: body.deliveryDays ? Number(body.deliveryDays) : null,
     },
   });
   return NextResponse.json(org, { status: 201 });

@@ -10,6 +10,7 @@ interface Org {
   uf: string | null;
   createdAt: string;
   isAiGenerated: boolean;
+  deliveryDays: number | null;
   _count: { purchaseOrders: number };
 }
 
@@ -30,6 +31,7 @@ export function OrgaosList() {
   const [name, setName] = useState("");
   const [cnpj, setCnpj] = useState("");
   const [uf, setUf] = useState("");
+  const [deliveryDays, setDeliveryDays] = useState("");
 
   async function loadOrgs() {
     const res = await fetch("/api/organizations");
@@ -47,11 +49,13 @@ export function OrgaosList() {
       setName(org.name);
       setCnpj(org.cnpj || "");
       setUf(org.uf || "");
+      setDeliveryDays(org.deliveryDays !== null ? org.deliveryDays.toString() : "");
     } else {
       setEditingId(null);
       setName("");
       setCnpj("");
       setUf("");
+      setDeliveryDays("");
     }
     setShowForm(true);
     
@@ -67,6 +71,7 @@ export function OrgaosList() {
     setName("");
     setCnpj("");
     setUf("");
+    setDeliveryDays("");
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -76,7 +81,8 @@ export function OrgaosList() {
     const payload = { 
       name, 
       cnpj: cnpj || null, 
-      uf: uf || null 
+      uf: uf || null,
+      deliveryDays: deliveryDays ? Number(deliveryDays) : null
     };
 
     if (editingId) {
@@ -200,6 +206,19 @@ export function OrgaosList() {
                 ))}
               </select>
             </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-zinc-700">
+                Prazo Médio Entrega (Dias)
+              </label>
+              <input
+                type="number"
+                value={deliveryDays}
+                onChange={(e) => setDeliveryDays(e.target.value)}
+                placeholder="Ex: 15"
+                min="0"
+                className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              />
+            </div>
           </div>
           <div className="mt-6 flex gap-3">
             <button
@@ -249,6 +268,8 @@ export function OrgaosList() {
                 </p>
                 <p className="text-xs text-zinc-500 mt-0.5">
                   <span className="font-mono">{org.cnpj || "Sem CNPJ"}</span> 
+                  <span className="mx-2 text-zinc-300">&bull;</span>
+                  <span className="text-zinc-500 font-medium">Prazo: {org.deliveryDays || "N/A"} d</span>
                   <span className="mx-2 text-zinc-300">&bull;</span>
                   <span className="text-indigo-600 font-medium">{org._count.purchaseOrders} OC(s)</span> vinculadas
                 </p>

@@ -15,6 +15,7 @@ export async function PATCH(
       ...(body.cnpj !== undefined && { cnpj: body.cnpj || null }),
       ...(body.uf !== undefined && { uf: body.uf || null }),
       ...(body.isAiGenerated !== undefined && { isAiGenerated: body.isAiGenerated }),
+      ...(body.deliveryDays !== undefined && { deliveryDays: body.deliveryDays ? Number(body.deliveryDays) : null }),
     },
   });
   return NextResponse.json(org);
