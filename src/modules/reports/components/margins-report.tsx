@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, ReactNode } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, ReactNode } from "react";
 import {
   TrendingUp,
   TrendingDown,
@@ -188,6 +188,45 @@ export function MarginsReport() {
   const [columnOrder, setColumnOrder] = useState<string[]>(DEFAULT_ORDER);
   const [visibleCols, setVisibleCols] = useState<Set<string>>(new Set(DEFAULT_VISIBLE));
   const [showColConfig, setShowColConfig] = useState(false);
+
+  // Column resize
+  const defaultWidths: Record<string, number> = {};
+  ALL_COLUMNS.forEach((col) => {
+    defaultWidths[col.id] = col.width && col.width !== "auto" ? parseInt(col.width) : 0;
+  });
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(defaultWidths);
+  const resizeRef = useRef<{ colId: string; startX: number; startW: number } | null>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
+
+  // Resize handlers
+  const onResizeStart = useCallback((colId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Get current rendered width of the th
+    const th = (e.target as HTMLElement).closest('th');
+    const startW = th ? th.getBoundingClientRect().width : 120;
+    resizeRef.current = { colId, startX: e.clientX, startW };
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!resizeRef.current) return;
+      const delta = ev.clientX - resizeRef.current.startX;
+      const newWidth = Math.max(40, resizeRef.current.startW + delta);
+      setColumnWidths((prev) => ({ ...prev, [resizeRef.current!.colId]: newWidth }));
+    };
+
+    const onMouseUp = () => {
+      resizeRef.current = null;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }, []);
 
   useEffect(() => {
     loadReport();
@@ -591,17 +630,18 @@ export function MarginsReport() {
       {/* Table — dynamic columns */}
       <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left" style={{ tableLayout: 'fixed' }}>
+          <table ref={tableRef} className="w-full text-sm text-left" style={{ tableLayout: 'fixed' }}>
             <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-medium text-xs">
               <tr>
                 {activeColumns.map((col) => {
                   const isSortable = !!col.sortField;
+                  const w = columnWidths[col.id];
                   return (
                     <th
                       key={col.id}
-                      style={{ width: col.width || 'auto' }}
+                      style={{ width: w ? `${w}px` : (col.width || 'auto'), position: 'relative' }}
                       className={cn(
-                        "px-3 py-3 select-none",
+                        "px-3 py-3 select-none group/th",
                         col.align === "right" && "text-right",
                         col.align === "center" && "text-center",
                         isSortable && "cursor-pointer hover:bg-zinc-100 transition-colors"
@@ -614,6 +654,13 @@ export function MarginsReport() {
                           <span className="text-xs">{sortAsc ? "↑" : "↓"}</span>
                         )}
                       </div>
+                      {/* Resize handle */}
+                      <div
+                        onMouseDown={(e) => onResizeStart(col.id, e)}
+                        className="absolute right-0 top-0 h-full w-[5px] cursor-col-resize hover:bg-indigo-400/50 active:bg-indigo-500/70 transition-colors no-print"
+                        onClick={(e) => e.stopPropagation()}
+                        title="Arrastar para redimensionar"
+                      />
                     </th>
                   );
                 })}
