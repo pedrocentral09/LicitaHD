@@ -12,7 +12,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
 async function getStats() {
-  const [totalOrders, totalOrgs, draftOrders, validatedOrders, validItems] = await Promise.all([
+  const [totalOrders, totalOrgs, draftOrders, validatedOrders, validItems, openItems, activeOrdersForDelay] = await Promise.all([
     prisma.purchaseOrder.count(),
     prisma.organization.count(),
     prisma.purchaseOrder.count({ where: { status: "DRAFT" } }),
@@ -24,14 +24,56 @@ async function getStats() {
         }
       },
       select: { quantity: true, unitPriceReturn: true, costPrice: true }
+    }),
+    prisma.purchaseItem.findMany({
+      where: {
+        purchaseOrder: {
+          status: { notIn: ["DELIVERED", "CANCELED"] }
+        }
+      },
+      select: { quantity: true, unitPriceReturn: true }
+    }),
+    prisma.purchaseOrder.findMany({
+      where: { status: { notIn: ["DELIVERED", "CANCELED", "DRAFT"] } },
+      include: {
+        organization: { select: { deliveryDays: true } },
+        items: { include: { shipmentItems: true } },
+        shipments: true
+      }
     })
   ]);
+
+  const totalOpenSalesValue = openItems.reduce((acc, item) => acc + (item.quantity * item.unitPriceReturn), 0);
+
+  let delayedCount = 0;
+  activeOrdersForDelay.forEach((oc: any) => {
+    const baseDateStr = oc.issuedAt || oc.createdAt;
+    if (!baseDateStr || !oc.organization?.deliveryDays) return;
+    
+    const availableItems = oc.items.filter((item: any) => {
+      const shipped = item.shipmentItems?.reduce((ac: number, si: any) => ac + si.quantity, 0) || 0;
+      return (item.quantity - shipped) > 0;
+    });
+
+    const allDelivered = oc.shipments && oc.shipments.length > 0 && oc.shipments.every((s: any) => s.status === "DELIVERED") && availableItems.length === 0;
+    if (allDelivered) return;
+
+    const issuedDate = new Date(baseDateStr);
+    const deadlineDate = new Date(issuedDate);
+    deadlineDate.setDate(deadlineDate.getDate() + oc.organization.deliveryDays);
+    
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    deadlineDate.setHours(0,0,0,0);
+
+    if (today > deadlineDate) delayedCount++;
+  });
 
   const totalSalesValue = validItems.reduce((acc, item) => acc + (item.quantity * item.unitPriceReturn), 0);
   const totalCostValue = validItems.reduce((acc, item) => acc + (item.quantity * (item.costPrice || 0)), 0);
   const totalProfitValue = totalSalesValue - totalCostValue;
 
-  return { totalOrders, totalOrgs, draftOrders, validatedOrders, totalSalesValue, totalProfitValue };
+  return { totalOrders, totalOrgs, draftOrders, validatedOrders, totalSalesValue, totalProfitValue, totalOpenSalesValue, delayedCount };
 }
 
 export async function HomePanel() {
@@ -44,6 +86,11 @@ export async function HomePanel() {
     style: 'currency',
     currency: 'BRL'
   }).format(stats.totalSalesValue);
+
+  const formattedOpenSales = new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(stats.totalOpenSalesValue);
 
   const formattedProfit = new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -96,6 +143,23 @@ export async function HomePanel() {
       bgLight: "bg-violet-50",
       textColor: "text-violet-700",
     },
+    {
+      label: "Vendas em Aberto",
+      value: formattedOpenSales,
+      icon: DollarSign,
+      color: "from-blue-500 to-cyan-500",
+      bgLight: "bg-cyan-50",
+      textColor: "text-cyan-700",
+      span2: true,
+    },
+    {
+      label: "Pedidos Atrasados",
+      value: stats.delayedCount,
+      icon: AlertTriangle,
+      color: "from-red-500 to-rose-600",
+      bgLight: "bg-red-50",
+      textColor: "text-red-700",
+    },
   ];
 
   if (isAdmin) {
@@ -103,12 +167,12 @@ export async function HomePanel() {
       label: "Lucratividade Bruta",
       value: formattedProfit,
       icon: PieChart,
-      color: "from-blue-500 to-blue-600",
-      bgLight: "bg-blue-50",
-      textColor: "text-blue-700",
+      color: "from-slate-700 to-slate-900",
+      bgLight: "bg-slate-100",
+      textColor: "text-slate-800",
       span2: true,
       subtitle: `Margem: ${profitMargin}%`,
-      subtitleColor: "text-blue-600"
+      subtitleColor: "text-slate-600"
     });
   }
 
