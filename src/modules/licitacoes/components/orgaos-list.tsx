@@ -49,7 +49,7 @@ export function OrgaosList() {
       setName(org.name);
       setCnpj(org.cnpj || "");
       setUf(org.uf || "");
-      setDeliveryDays(org.deliveryDays !== null ? org.deliveryDays.toString() : "");
+      setDeliveryDays(org.deliveryDays?.toString() || "");
     } else {
       setEditingId(null);
       setName("");
