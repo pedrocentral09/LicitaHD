@@ -1,18 +1,25 @@
 @import "tailwindcss";
 
 @media print {
-  /* A4 landscape for wide tables */
   @page {
     size: A4 landscape;
     margin: 10mm 8mm;
   }
 
-  /* ── Hide: sidebar, buttons, inputs, filters, modals ── */
+  /* Preserve colors */
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background: white !important;
+  }
+
+  /* Hide sidebar */
   aside {
     display: none !important;
     width: 0 !important;
   }
 
+  /* Hide interactive elements and .no-print */
   .no-print,
   button,
   input,
@@ -21,16 +28,9 @@
     display: none !important;
   }
 
-  /* ── Body reset ── */
-  body {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    background: white !important;
-  }
-
-  /* ── Layout: remove flex sidebar+main, make main full width ── */
-  body > div,           /* Providers wrapper */
-  body > div > div,     /* flex h-screen container */
+  /* Expand layout to full width (remove sidebar flex) */
+  body > div,
+  body > div > div,
   body > div > div > div {
     display: block !important;
     width: 100% !important;
@@ -44,64 +44,27 @@
   main {
     width: 100% !important;
     max-width: 100% !important;
-    overflow: visible !important;
     height: auto !important;
     padding: 0 !important;
   }
 
-  /* ── Show print-only header ── */
+  /* Show print-only header */
   .print-header {
     display: block !important;
   }
 
-  /* ── Tables: compact for A4 ── */
-  table {
-    width: 100% !important;
-    min-width: unset !important;
-    font-size: 9pt !important;
-    border-collapse: collapse !important;
-  }
-
+  /* Repeat thead on each page */
   thead {
     display: table-header-group !important;
   }
 
-  th, td {
-    padding: 3px 5px !important;
-    border-bottom: 0.5px solid #d4d4d8 !important;
-  }
-
-  th {
-    background-color: #f4f4f5 !important;
-    font-weight: 700 !important;
-    font-size: 8pt !important;
-  }
-
+  /* Don't break rows across pages */
   tr {
     page-break-inside: avoid !important;
   }
 
-  /* ── Cells: respect line-clamp, no overflow ── */
-  td, th {
-    overflow: hidden !important;
-  }
-
-  /* ── Overflow wrappers ── */
-  .overflow-hidden, .overflow-x-auto {
-    overflow: visible !important;
-  }
-
-  /* ── Remove decorative shadows/rounds ── */
-  .rounded-xl, .rounded-lg, .shadow-sm, .shadow-md, .shadow-2xl {
-    border-radius: 2px !important;
+  /* Remove decorative shadows */
+  .shadow-sm, .shadow-md, .shadow-2xl, .shadow-xl {
     box-shadow: none !important;
-  }
-
-  /* ── Preserve colored badges ── */
-  span[class*="bg-emerald"], span[class*="bg-amber"],
-  span[class*="bg-red"], span[class*="bg-orange"],
-  span[class*="bg-indigo"], span[class*="bg-blue"] {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
   }
 }
