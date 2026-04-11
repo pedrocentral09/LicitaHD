@@ -142,6 +142,22 @@ model ProcurementGroup {
 }
 
 // -------------------------------------------------------------
+// Módulo: Centro de Custos
+// -------------------------------------------------------------
+model CostCenter {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  accountReceivables AccountReceivable[]
+  accountPayables    AccountPayable[]
+}
+
+// -------------------------------------------------------------
 // Módulo: Financeiro (Contas a Receber)
 // -------------------------------------------------------------
 model AccountReceivable {
@@ -160,6 +176,9 @@ model AccountReceivable {
 
   shipmentId      String?  @unique
   shipment        Shipment? @relation(fields: [shipmentId], references: [id])
+
+  costCenterId    String?
+  costCenter      CostCenter? @relation(fields: [costCenterId], references: [id])
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -190,6 +209,9 @@ model AccountPayable {
 
   purchaseOrderId String?
   purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+
+  costCenterId    String?
+  costCenter      CostCenter? @relation(fields: [costCenterId], references: [id])
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

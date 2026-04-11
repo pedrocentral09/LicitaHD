@@ -30,6 +30,7 @@ interface Payable {
   notes: string | null;
   organization?: { name: string } | null;
   purchaseOrder?: { documentNumber: string } | null;
+  costCenter?: { id: string; code: string; name: string } | null;
 }
 
 interface Stats {
@@ -88,7 +89,10 @@ export default function ContasPagarPage() {
   const [formDueDate, setFormDueDate] = useState("");
   const [formSupplier, setFormSupplier] = useState("");
   const [formCategory, setFormCategory] = useState("MERCADORIA");
+  const [formCostCenterId, setFormCostCenterId] = useState("");
   const [formNotes, setFormNotes] = useState("");
+
+  const [costCenters, setCostCenters] = useState<{id: string; code: string; name: string}[]>([]);
 
   // Detail modal
   const [detailData, setDetailData] = useState<Payable | null>(null);
@@ -107,8 +111,19 @@ export default function ContasPagarPage() {
     }
   };
 
+  const fetchCostCenters = async () => {
+    try {
+      const res = await fetch("/api/cost-centers");
+      const json = await res.json();
+      setCostCenters((json || []).filter((c: any) => c.active));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     fetchPayables();
+    fetchCostCenters();
   }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -124,6 +139,7 @@ export default function ContasPagarPage() {
           dueDate: formDueDate,
           supplier: formSupplier,
           category: formCategory,
+          costCenterId: formCostCenterId || undefined,
           notes: formNotes,
         }),
       });
@@ -134,6 +150,7 @@ export default function ContasPagarPage() {
         setFormDueDate("");
         setFormSupplier("");
         setFormCategory("MERCADORIA");
+        setFormCostCenterId("");
         setFormNotes("");
         fetchPayables();
       }
@@ -390,9 +407,16 @@ export default function ContasPagarPage() {
                         className="px-5 py-4 cursor-pointer group"
                         onClick={() => setDetailData(item)}
                       >
-                        <p className="text-zinc-900 font-medium group-hover:text-red-600 transition-colors">
-                          {item.title}
-                        </p>
+                        <div className="flex items-center gap-2 mb-0.5">
+                          {item.costCenter && (
+                            <span className="px-1.5 py-0.5 bg-zinc-100 text-zinc-600 rounded text-[9px] font-mono font-bold">
+                              {item.costCenter.code}
+                            </span>
+                          )}
+                          <p className="text-zinc-900 font-medium group-hover:text-red-600 transition-colors">
+                            {item.title}
+                          </p>
+                        </div>
                         {item.purchaseOrder && (
                           <p className="text-[10px] text-zinc-400 mt-0.5">
                             OC: {item.purchaseOrder.documentNumber}
@@ -511,6 +535,17 @@ export default function ContasPagarPage() {
                   </select>
                 </div>
                 <div>
+                  <label className="block text-xs font-medium text-zinc-700 mb-1">Centro de Custo</label>
+                  <select required className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-red-500 focus:ring-2 focus:ring-red-500/20 outline-none" value={formCostCenterId} onChange={(e) => setFormCostCenterId(e.target.value)}>
+                    <option value="">Selecione...</option>
+                    {costCenters.map((cc) => (
+                      <option key={cc.id} value={cc.id}>
+                        {cc.code} — {cc.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
                   <label className="block text-xs font-medium text-zinc-700 mb-1">Valor (R$)</label>
                   <input required type="number" step="0.01" placeholder="0.00" className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-red-500 focus:ring-2 focus:ring-red-500/20 outline-none" value={formAmount} onChange={(e) => setFormAmount(e.target.value)} />
                 </div>
@@ -585,6 +620,19 @@ export default function ContasPagarPage() {
                   </span>
                 </div>
                 <div>
+                  <p className="text-[10px] text-zinc-400 font-medium">Centro de Custo</p>
+                  <select
+                    id="detail-payable-cc"
+                    defaultValue={detailData.costCenter?.id || ""}
+                    className="w-full mt-0.5 text-sm text-zinc-900 border border-zinc-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+                  >
+                    <option value="">Selecione...</option>
+                    {costCenters.map((cc) => (
+                      <option key={cc.id} value={cc.id}>{cc.code} — {cc.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
                   <p className="text-[10px] text-zinc-400 font-medium">Fornecedor</p>
                   <p className="font-medium text-zinc-900">{detailData.supplier || "—"}</p>
                 </div>
@@ -606,7 +654,7 @@ export default function ContasPagarPage() {
 
             {/* Footer with Actions */}
             <div className="border-t border-zinc-200 bg-zinc-50 px-6 py-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 {detailData.status !== "PAID" ? (
                   <>
                     <div className="flex items-center gap-2">
@@ -655,6 +703,24 @@ export default function ContasPagarPage() {
                     </button>
                   </>
                 )}
+                <button
+                  onClick={async () => {
+                    const newCostCenterId = (document.getElementById("detail-payable-cc") as HTMLSelectElement)?.value;
+                    if (newCostCenterId !== (detailData.costCenter?.id || "")) {
+                      await fetch(`/api/payables/${detailData.id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ costCenterId: newCostCenterId || null }),
+                      });
+                      fetchPayables();
+                    }
+                    setDetailData(null);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 text-white rounded-lg text-xs font-bold hover:bg-violet-700 transition-colors shadow-sm"
+                >
+                  <Check className="h-3.5 w-3.5" />
+                  Salvar
+                </button>
                 <button
                   onClick={() => deletePayable(detailData.id)}
                   className="flex items-center gap-1 px-2.5 py-1.5 text-zinc-400 hover:bg-red-50 hover:text-red-600 rounded-lg text-[10px] font-bold transition-colors border border-zinc-200"

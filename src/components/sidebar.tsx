@@ -15,7 +15,8 @@ import {
   LogOut,
   Users,
   Database,
-  BarChart3
+  BarChart3,
+  FolderTree
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -99,6 +100,12 @@ const navCategories = [
         href: "/margens",
         icon: BarChart3,
         roles: ["GOD", "BUYER"]
+      },
+      {
+        label: "Centros de Custo",
+        href: "/centros-custo",
+        icon: FolderTree,
+        roles: ["GOD", "OPERATOR"]
       },
     ]
   },

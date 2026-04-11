@@ -21,6 +21,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (body.dueDate !== undefined) {
       updateData.dueDate = new Date(body.dueDate);
     }
+    if (body.costCenterId !== undefined) updateData.costCenterId = body.costCenterId;
 
     const receivable = await prisma.accountReceivable.update({
       where: { id },

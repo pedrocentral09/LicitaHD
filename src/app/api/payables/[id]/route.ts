@@ -20,6 +20,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (body.supplier !== undefined) updateData.supplier = body.supplier;
     if (body.category !== undefined) updateData.category = body.category;
     if (body.notes !== undefined) updateData.notes = body.notes;
+    if (body.costCenterId !== undefined) updateData.costCenterId = body.costCenterId;
 
     const payable = await prisma.accountPayable.update({
       where: { id },

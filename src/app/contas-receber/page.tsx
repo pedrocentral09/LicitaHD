@@ -68,6 +68,8 @@ export default function ContasReceberPage() {
   const [amount, setAmount] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [orgId, setOrgId] = useState("");
+  const [costCenterId, setCostCenterId] = useState("");
+  const [costCenters, setCostCenters] = useState<{id: string; code: string; name: string}[]>([]);
 
   // Detail modal
   const [detailData, setDetailData] = useState<any>(null);
@@ -96,9 +98,20 @@ export default function ContasReceberPage() {
     }
   };
 
+  const fetchCostCenters = async () => {
+    try {
+      const res = await fetch("/api/cost-centers");
+      const json = await res.json();
+      setCostCenters((json || []).filter((c: any) => c.active));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     fetchReceivables();
     fetchOrgs();
+    fetchCostCenters();
   }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -108,7 +121,7 @@ export default function ContasReceberPage() {
       const res = await fetch("/api/receivables", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, amount, dueDate, organizationId: orgId }),
+        body: JSON.stringify({ title, amount, dueDate, organizationId: orgId, costCenterId: costCenterId || undefined }),
       });
       if (res.ok) {
         setIsModalOpen(false);
@@ -116,6 +129,7 @@ export default function ContasReceberPage() {
         setAmount("");
         setDueDate("");
         setOrgId("");
+        setCostCenterId("");
         fetchReceivables();
       }
     } catch (error) {
@@ -416,19 +430,23 @@ export default function ContasReceberPage() {
                       <td className="px-5 py-4 font-medium text-zinc-900 max-w-[180px] truncate">
                         {item.organization.name}
                       </td>
-                      <td
-                        className="px-5 py-4 cursor-pointer group"
-                        onClick={() => openDetail(item.id)}
-                      >
-                        <p className="text-zinc-900 font-medium group-hover:text-indigo-600 transition-colors">
-                          {item.title}
-                        </p>
-                        {item.purchaseOrder && (
-                          <p className="text-[10px] text-zinc-400 mt-0.5">
-                            OC: {item.purchaseOrder.documentNumber}
+                      <td className="px-5 py-4 cursor-pointer group" onClick={() => openDetail(item.id)}>
+                        <div className="flex items-center gap-2 mb-0.5">
+                          {item.costCenter && (
+                            <span className="px-1.5 py-0.5 bg-zinc-100 text-zinc-600 rounded text-[9px] font-mono font-bold">
+                              {item.costCenter.code}
+                            </span>
+                          )}
+                          <p className="text-zinc-900 font-medium group-hover:text-indigo-600 transition-colors">
+                            {item.title}
                           </p>
+                        </div>
+                        {item.organization && (
+                          <p className="text-[10px] text-zinc-400">{item.organization.name}</p>
                         )}
-                        <p className="text-[9px] text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5">Clique para detalhes</p>
+                        <p className="text-[9px] text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5">
+                          Clique para editar detalhes
+                        </p>
                       </td>
                       <td className="px-5 py-4 font-mono text-zinc-900 text-right font-bold">
                         {fmt(item.amount)}
@@ -610,6 +628,25 @@ export default function ContasReceberPage() {
                 </div>
               </div>
 
+              <div>
+                <label className="block text-xs font-medium text-zinc-700 mb-1">
+                  Centro de Custo
+                </label>
+                <select
+                  required
+                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                  value={costCenterId}
+                  onChange={(e) => setCostCenterId(e.target.value)}
+                >
+                  <option value="">Selecione o centro de custo...</option>
+                  {costCenters.map((cc) => (
+                    <option key={cc.id} value={cc.id}>
+                      {cc.code} — {cc.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="pt-4 flex justify-end gap-3">
                 <button
                   type="button"
@@ -752,14 +789,24 @@ export default function ContasReceberPage() {
                         detailData.status === "OVERDUE" && "bg-red-100 text-red-700"
                       )}>
                         {detailData.status === "PAID" ? "PAGO" : detailData.status === "PENDING" ? "PENDENTE" : "ATRASADO"}
-                      </span>
-                    </div>
-                  </div>
                   <div>
                     <label className="text-[10px] text-zinc-400 font-medium">NF-e Vinculada</label>
                     <p className="font-bold text-zinc-900 mt-1">
                       {detailData.shipment?.invoiceNumber || "—"}
                     </p>
+                  </div>
+                  <div className="col-span-2 mt-2">
+                    <label className="text-[10px] text-zinc-400 font-medium">Centro de Custo</label>
+                    <select
+                      id="edit-cost-center"
+                      defaultValue={detailData.costCenter?.id || ""}
+                      className="w-full mt-0.5 text-sm text-zinc-900 border border-zinc-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    >
+                      <option value="">Selecione...</option>
+                      {costCenters.map((cc) => (
+                        <option key={cc.id} value={cc.id}>{cc.code} — {cc.name}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
@@ -890,6 +937,7 @@ export default function ContasReceberPage() {
                     const newAmount = (document.getElementById("edit-amount") as HTMLInputElement)?.value;
                     const newDueDate = (document.getElementById("edit-due-date") as HTMLInputElement)?.value;
                     const newPaidAt = (document.getElementById("edit-paid-at") as HTMLInputElement)?.value;
+                    const newCostCenterId = (document.getElementById("edit-cost-center") as HTMLSelectElement)?.value;
 
                     const fields: Record<string, any> = {};
                     if (newTitle && newTitle !== detailData.title) fields.title = newTitle;
@@ -897,6 +945,7 @@ export default function ContasReceberPage() {
                     if (newDueDate) fields.dueDate = newDueDate;
                     if (newPaidAt) fields.paidAt = newPaidAt;
                     else if (!newPaidAt && detailData.paidAt) fields.paidAt = null;
+                    if (newCostCenterId !== (detailData.costCenter?.id || "")) fields.costCenterId = newCostCenterId || null;
 
                     if (Object.keys(fields).length > 0) {
                       await saveReceivable(detailData.id, fields);

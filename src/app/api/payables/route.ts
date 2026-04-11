@@ -27,6 +27,7 @@ export async function GET() {
       include: {
         organization: { select: { name: true } },
         purchaseOrder: { select: { documentNumber: true } },
+        costCenter: { select: { id: true, code: true, name: true } },
       },
     });
 
@@ -90,6 +91,7 @@ export async function POST(req: Request) {
         notes: body.notes || null,
         organizationId: body.organizationId || null,
         purchaseOrderId: body.purchaseOrderId || null,
+        costCenterId: body.costCenterId || null,
         status: "PENDING",
       },
     });

@@ -23,6 +23,7 @@ export async function GET() {
         organization: { select: { name: true } },
         purchaseOrder: { select: { documentNumber: true, sellerName: true } },
         shipment: { select: { shipmentNumber: true, invoiceNumber: true, status: true } },
+        costCenter: { select: { id: true, code: true, name: true } },
       },
     });
 
@@ -80,6 +81,7 @@ export async function POST(req: Request) {
         dueDate: new Date(body.dueDate),
         organizationId: body.organizationId,
         purchaseOrderId: body.purchaseOrderId || null,
+        costCenterId: body.costCenterId || null,
         status: "PENDING",
       },
     });

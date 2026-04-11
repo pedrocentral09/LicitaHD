@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   CheckCircle,
   MinusCircle,
+  Printer,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -191,8 +192,22 @@ export function MarginsReport() {
 
   return (
     <div className="space-y-6">
+      {/* Print-only header */}
+      <div className="print-header hidden">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #18181b', paddingBottom: '8px', marginBottom: '12px' }}>
+          <div>
+            <h1 style={{ fontSize: '16pt', fontWeight: 800, color: '#18181b' }}>Relatório de Margens</h1>
+            <p style={{ fontSize: '9pt', color: '#71717a', marginTop: '2px' }}>Hub Licitações — Análise de Margem Bruta por Item</p>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <p style={{ fontSize: '8pt', color: '#71717a' }}>Gerado em: {new Date().toLocaleDateString('pt-BR')} às {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+            <p style={{ fontSize: '8pt', color: '#71717a' }}>{filteredItems.length} de {items.length} itens filtrados</p>
+          </div>
+        </div>
+      </div>
+
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between no-print">
         <div>
           <h2 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-indigo-500" />
@@ -202,13 +217,22 @@ export function MarginsReport() {
             Análise detalhada de margem bruta por item com filtros avançados
           </p>
         </div>
-        <button
-          onClick={exportCSV}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
-        >
-          <Download className="w-4 h-4" />
-          Exportar CSV
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => window.print()}
+            className="flex items-center gap-2 px-4 py-2 bg-zinc-700 hover:bg-zinc-800 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+          >
+            <Printer className="w-4 h-4" />
+            Imprimir A4
+          </button>
+          <button
+            onClick={exportCSV}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+          >
+            <Download className="w-4 h-4" />
+            Exportar CSV
+          </button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -252,7 +276,7 @@ export function MarginsReport() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-sm">
+      <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-sm no-print">
         <div className="flex flex-wrap items-center gap-4">
           {/* Search */}
           <div className="relative flex-1 min-w-[200px] max-w-md">
