@@ -1,4 +1,4 @@
-import { ComprasPanel } from "@/modules/purchasing/components/compras-panel";
+import { ComprasPanel } from "@/modules/compras/components/compras-panel";
 
 export default function ComprasPage() {
   return (

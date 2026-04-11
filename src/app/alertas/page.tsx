@@ -1,4 +1,4 @@
-import { AlertasPanel } from "@/modules/purchasing/components/alertas-panel";
+import { AlertasPanel } from "@/modules/compras/components/alertas-panel";
 
 export default function AlertasPage() {
   return (

@@ -1,4 +1,4 @@
-import { OrgaosList } from "@/modules/orders/components/orgaos-list";
+import { OrgaosList } from "@/modules/licitacoes/components/orgaos-list";
 
 export default function OrgaosPage() {
   return (

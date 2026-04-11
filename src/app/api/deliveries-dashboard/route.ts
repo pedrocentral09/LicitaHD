@@ -3,22 +3,23 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    // Busca OCs que tenham itens COM custo preenchido (prontos pra logística)
-    // e que não estejam canceladas ou totalmente entregues
+    const url = new URL(req.url);
+    const includeAll = url.searchParams.get("all") === "true";
+
     const organizations = await prisma.organization.findMany({
       orderBy: { name: "asc" },
       include: {
         purchaseOrders: {
           where: {
-            status: { notIn: ["CANCELED", "DELIVERED", "DRAFT"] },
-            items: { some: { costPrice: { not: null } } }
+            status: { notIn: includeAll ? ["CANCELED", "DELIVERED"] : ["CANCELED", "DELIVERED", "DRAFT"] },
+            ...(includeAll ? {} : { items: { some: { costPrice: { not: null } } } })
           },
           orderBy: { documentNumber: "asc" },
           include: {
             items: {
-              where: { costPrice: { not: null } }, // Só traz itens com custo
+              ...(includeAll ? {} : { where: { costPrice: { not: null } } }),
               include: {
                 shipmentItems: {
                   include: {

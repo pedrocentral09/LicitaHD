@@ -1,4 +1,4 @@
-import { IngestaoUploader } from "@/modules/ingestion/components/ingestao-uploader";
+import { IngestaoUploader } from "@/modules/licitacoes/components/ingestao-uploader";
 
 export default function IngestaoPage() {
   return (

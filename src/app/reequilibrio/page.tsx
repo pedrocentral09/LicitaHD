@@ -1,4 +1,4 @@
-import { ReequilibrioPanel } from "@/modules/reequilibrio/components/reequilibrio-panel";
+import { ReequilibrioPanel } from "@/modules/governanca/components/reequilibrio-panel";
 
 export default function ReequilibrioPage() {
   return (

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
@@ -72,6 +73,13 @@ const navCategories = [
         icon: Truck,
         roles: ["GOD", "LOGISTICS"]
       },
+      {
+        label: "Alertas de Atrasos",
+        href: "/alertas-atrasos",
+        icon: AlertTriangle,
+        roles: ["GOD", "LOGISTICS", "BUYER", "OPERATOR"],
+        badge: "delays"
+      },
     ]
   },
   {
@@ -131,6 +139,40 @@ const navCategories = [
 export function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const [delayedCount, setDelayedCount] = useState(0);
+
+  useEffect(() => {
+    async function fetchDelayedStats() {
+      try {
+        const res = await fetch("/api/deliveries-dashboard?all=true");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          let count = 0;
+          const today = new Date();
+          today.setHours(0,0,0,0);
+
+          data.forEach(org => {
+            org.purchaseOrders?.forEach((oc: any) => {
+              const baseDateStr = oc.issuedAt || oc.createdAt;
+              if (!baseDateStr || !org.deliveryDays) return;
+              
+              const issuedDate = new Date(baseDateStr + (baseDateStr.includes("T") ? "" : "T00:00:00"));
+              const deadlineDate = new Date(issuedDate);
+              deadlineDate.setDate(deadlineDate.getDate() + org.deliveryDays);
+              deadlineDate.setHours(0,0,0,0);
+
+              if (today > deadlineDate) count++;
+            });
+          });
+          setDelayedCount(count);
+        }
+      } catch (err) {
+        // ignore
+      }
+    }
+    fetchDelayedStats();
+  }, []);
 
   if (!session) return null;
 
@@ -172,14 +214,23 @@ export function Sidebar() {
                       key={item.href}
                       href={item.href}
                       className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
+                        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 justify-between",
                         isActive
                           ? "bg-indigo-50 text-indigo-700 shadow-sm"
                           : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
                       )}
                     >
-                      <item.icon className={cn("h-4 w-4", isActive ? "text-indigo-600" : "text-zinc-400")} />
-                      {item.label}
+                      <div className="flex items-center gap-3">
+                        <item.icon className={cn("h-4 w-4", isActive ? "text-indigo-600" : "text-zinc-400")} />
+                        {item.label}
+                      </div>
+
+                      {/* Badge if exists and greater than 0 */}
+                      {(item as any).badge === "delays" && delayedCount > 0 && (
+                        <div className="flex h-5 items-center justify-center rounded-full bg-red-100 px-2 text-[10px] font-bold text-red-600 border border-red-200">
+                          {delayedCount}
+                        </div>
+                      )}
                     </Link>
                   );
                 })}

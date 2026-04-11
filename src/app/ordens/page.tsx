@@ -1,4 +1,4 @@
-import { OrdensPanel } from "@/modules/orders/components/ordens-panel";
+import { OrdensPanel } from "@/modules/licitacoes/components/ordens-panel";
 
 export const metadata = {
   title: "Ordens de Compra | Hub Licitações",

@@ -1,4 +1,4 @@
-import { EntregasPanel } from "@/modules/deliveries/components/entregas-panel";
+import { EntregasPanel } from "@/modules/logistica/components/entregas-panel";
 import { Truck } from "lucide-react";
 
 export default function EntregasPage() {

@@ -1,4 +1,4 @@
-import { KanbanBoard } from "@/modules/orders/components/kanban-board";
+import { KanbanBoard } from "@/modules/licitacoes/components/kanban-board";
 
 export default function KanbanPage() {
   return (
