@@ -29,6 +29,7 @@ interface Receivable {
   organization: { name: string };
   purchaseOrder?: { documentNumber: string; sellerName: string | null };
   shipment?: { shipmentNumber: number; invoiceNumber: string | null; status: string } | null;
+  costCenter?: { id: string; code: string; name: string } | null;
 }
 
 interface Stats {
@@ -788,7 +789,10 @@ export default function ContasReceberPage() {
                         detailData.status === "PENDING" && "bg-amber-100 text-amber-700",
                         detailData.status === "OVERDUE" && "bg-red-100 text-red-700"
                       )}>
-                        {detailData.status === "PAID" ? "PAGO" : detailData.status === "PENDING" ? "PENDENTE" : "ATRASADO"}
+                      {detailData.status === "PAID" ? "PAGO" : detailData.status === "PENDING" ? "PENDENTE" : "ATRASADO"}
+                      </span>
+                    </div>
+                  </div>
                   <div>
                     <label className="text-[10px] text-zinc-400 font-medium">NF-e Vinculada</label>
                     <p className="font-bold text-zinc-900 mt-1">
