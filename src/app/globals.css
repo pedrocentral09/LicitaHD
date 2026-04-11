@@ -81,24 +81,9 @@
     page-break-inside: avoid !important;
   }
 
-  /* ── Disable line-clamp in print (prevents text overlap) ── */
-  table {
-    table-layout: auto !important;
-  }
-
-  .line-clamp-1, .line-clamp-2, .line-clamp-3,
-  [class*="line-clamp"] {
-    -webkit-line-clamp: unset !important;
-    -webkit-box-orient: unset !important;
-    display: block !important;
-    overflow: visible !important;
-    text-overflow: unset !important;
-  }
-
+  /* ── Cells: respect line-clamp, no overflow ── */
   td, th {
-    overflow: visible !important;
-    white-space: normal !important;
-    word-break: break-word !important;
+    overflow: hidden !important;
   }
 
   /* ── Overflow wrappers ── */
