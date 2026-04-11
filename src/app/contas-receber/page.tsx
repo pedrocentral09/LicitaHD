@@ -14,6 +14,8 @@ import {
   ArrowUpDown,
   Filter,
   Undo2,
+  FileText,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -59,13 +61,17 @@ export default function ContasReceberPage() {
   const [sortField, setSortField] = useState<SortField>("dueDate");
   const [sortAsc, setSortAsc] = useState(true);
 
-  // Modal
+  // Modal criação
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [orgId, setOrgId] = useState("");
+
+  // Detail modal
+  const [detailData, setDetailData] = useState<any>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const fetchReceivables = async () => {
     try {
@@ -144,6 +150,19 @@ export default function ContasReceberPage() {
       body: JSON.stringify({ paidAt }),
     });
     fetchReceivables();
+  };
+
+  const openDetail = async (id: string) => {
+    setDetailLoading(true);
+    setDetailData(null);
+    try {
+      const res = await fetch(`/api/receivables/${id}/detail`);
+      const json = await res.json();
+      setDetailData(json);
+    } catch (e) {
+      console.error(e);
+    }
+    setDetailLoading(false);
   };
 
   const fmt = (val: number) =>
@@ -387,13 +406,19 @@ export default function ContasReceberPage() {
                       <td className="px-5 py-4 font-medium text-zinc-900 max-w-[180px] truncate">
                         {item.organization.name}
                       </td>
-                      <td className="px-5 py-4">
-                        <p className="text-zinc-900 font-medium">{item.title}</p>
+                      <td
+                        className="px-5 py-4 cursor-pointer group"
+                        onClick={() => openDetail(item.id)}
+                      >
+                        <p className="text-zinc-900 font-medium group-hover:text-indigo-600 transition-colors">
+                          {item.title}
+                        </p>
                         {item.purchaseOrder && (
                           <p className="text-[10px] text-zinc-400 mt-0.5">
                             OC: {item.purchaseOrder.documentNumber}
                           </p>
                         )}
+                        <p className="text-[9px] text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5">Clique para detalhes</p>
                       </td>
                       <td className="px-5 py-4 font-mono text-zinc-900 text-right font-bold">
                         {fmt(item.amount)}
@@ -621,6 +646,193 @@ export default function ContasReceberPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* DETAIL MODAL */}
+      {detailData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 bg-zinc-50">
+              <div>
+                <h3 className="text-base font-bold text-zinc-900 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-indigo-500" />
+                  {detailData.title}
+                </h3>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  {detailData.organization?.name}
+                  {detailData.purchaseOrder && ` — OC ${detailData.purchaseOrder.documentNumber}`}
+                </p>
+              </div>
+              <button
+                onClick={() => setDetailData(null)}
+                className="p-1.5 hover:bg-zinc-200 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-zinc-400" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Financial Summary Cards */}
+              {detailData.financial && (
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200">
+                    <p className="text-[10px] text-emerald-600 font-medium">Receita</p>
+                    <p className="text-lg font-bold text-emerald-700">
+                      {fmt(detailData.financial.totalRevenue)}
+                    </p>
+                  </div>
+                  <div className="bg-red-50 rounded-lg p-3 border border-red-200">
+                    <p className="text-[10px] text-red-600 font-medium">Custo</p>
+                    <p className="text-lg font-bold text-red-700">
+                      {fmt(detailData.financial.totalCost)}
+                    </p>
+                  </div>
+                  <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
+                    <p className="text-[10px] text-amber-600 font-medium">Impostos</p>
+                    <p className="text-lg font-bold text-amber-700">
+                      {fmt(detailData.financial.totalTax)}
+                    </p>
+                  </div>
+                  <div className="bg-indigo-50 rounded-lg p-3 border border-indigo-200">
+                    <p className="text-[10px] text-indigo-600 font-medium">Lucro Real</p>
+                    <p className={cn("text-lg font-bold", detailData.financial.totalProfit >= 0 ? "text-indigo-700" : "text-red-700")}>
+                      {fmt(detailData.financial.totalProfit)}
+                    </p>
+                  </div>
+                  <div className="bg-zinc-100 rounded-lg p-3 border border-zinc-300">
+                    <p className="text-[10px] text-zinc-600 font-medium">Margem Real</p>
+                    <p className={cn("text-lg font-bold", detailData.financial.overallMargin >= 5 ? "text-emerald-700" : detailData.financial.overallMargin >= 0 ? "text-amber-700" : "text-red-700")}>
+                      {detailData.financial.overallMargin.toFixed(1)}%
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Document Info */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <p className="text-[10px] text-zinc-400 font-medium">Valor da Cobrança</p>
+                  <p className="font-bold text-zinc-900">{fmt(detailData.amount)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-zinc-400 font-medium">Vencimento</p>
+                  <p className="font-bold text-zinc-900">{fmtDate(detailData.dueDate)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-zinc-400 font-medium">Status</p>
+                  <span className={cn(
+                    "inline-block px-2 py-0.5 rounded-full text-[10px] font-bold mt-0.5",
+                    detailData.status === "PAID" && "bg-emerald-100 text-emerald-700",
+                    detailData.status === "PENDING" && "bg-amber-100 text-amber-700",
+                    detailData.status === "OVERDUE" && "bg-red-100 text-red-700"
+                  )}>
+                    {detailData.status === "PAID" ? "PAGO" : detailData.status === "PENDING" ? "PENDENTE" : "ATRASADO"}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-[10px] text-zinc-400 font-medium">NF-e Vinculada</p>
+                  <p className="font-bold text-zinc-900">
+                    {detailData.shipment?.invoiceNumber || "—"}
+                  </p>
+                </div>
+              </div>
+
+              {/* OC / Shipment Info */}
+              {detailData.purchaseOrder && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm border-t border-zinc-100 pt-4">
+                  <div>
+                    <p className="text-[10px] text-zinc-400 font-medium">Nº OC</p>
+                    <p className="font-bold text-zinc-900">{detailData.purchaseOrder.documentNumber}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-zinc-400 font-medium">Vendedor</p>
+                    <p className="font-mono text-zinc-700">{detailData.purchaseOrder.sellerName || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-zinc-400 font-medium">Status da OC</p>
+                    <p className="text-zinc-700">{detailData.purchaseOrder.status}</p>
+                  </div>
+                  {detailData.shipment && (
+                    <div>
+                      <p className="text-[10px] text-zinc-400 font-medium">Remessa</p>
+                      <p className="font-bold text-zinc-900">#{detailData.shipment.shipmentNumber}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Items Breakdown */}
+              {detailData.financial?.items?.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-bold text-zinc-700 mb-2 flex items-center gap-1.5">
+                    <BarChart3 className="w-3.5 h-3.5 text-indigo-500" />
+                    Lucratividade por Item
+                  </h4>
+                  <div className="rounded-lg border border-zinc-200 overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead className="bg-zinc-50 text-zinc-500 font-medium border-b border-zinc-200">
+                        <tr>
+                          <th className="px-3 py-2 text-left">Descrição</th>
+                          <th className="px-3 py-2 text-right">Qtd</th>
+                          <th className="px-3 py-2 text-right">Venda</th>
+                          <th className="px-3 py-2 text-right">Custo</th>
+                          <th className="px-3 py-2 text-right">Imposto</th>
+                          <th className="px-3 py-2 text-right">Lucro</th>
+                          <th className="px-3 py-2 text-right">Margem</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100">
+                        {detailData.financial.items.map((fi: any, idx: number) => (
+                          <tr key={idx} className={cn("hover:bg-zinc-50", fi.margin < 0 && "bg-red-50/40")}>
+                            <td className="px-3 py-2 font-medium text-zinc-800 max-w-[200px] truncate">{fi.description}</td>
+                            <td className="px-3 py-2 text-right text-zinc-500">{fi.quantity}</td>
+                            <td className="px-3 py-2 text-right text-zinc-700">{fmt(fi.totalSell)}</td>
+                            <td className="px-3 py-2 text-right text-zinc-700">{fmt(fi.totalCostAmount)}</td>
+                            <td className="px-3 py-2 text-right text-zinc-500">{fmt(fi.taxAmount)}</td>
+                            <td className="px-3 py-2 text-right">
+                              <span className={cn("font-bold", fi.profit >= 0 ? "text-emerald-600" : "text-red-600")}>
+                                {fmt(fi.profit)}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              <span className={cn(
+                                "px-1.5 py-0.5 rounded text-[10px] font-bold",
+                                fi.margin >= 15 ? "bg-emerald-100 text-emerald-700" :
+                                fi.margin >= 5 ? "bg-amber-100 text-amber-700" :
+                                fi.margin >= 0 ? "bg-orange-100 text-orange-700" :
+                                "bg-red-100 text-red-700"
+                              )}>
+                                {fi.margin.toFixed(1)}%
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {detailData.financial?.items?.length === 0 && (
+                <div className="text-center py-8 text-zinc-400 text-xs border border-dashed border-zinc-200 rounded-lg">
+                  <BarChart3 className="w-6 h-6 text-zinc-300 mx-auto mb-2" />
+                  Sem dados financeiros detalhados.
+                  <br />Cobrança manual sem vínculo de remessa/OC.
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-zinc-200 bg-zinc-50 px-6 py-3 flex justify-end">
+              <button
+                onClick={() => setDetailData(null)}
+                className="px-4 py-2 text-sm font-medium text-zinc-600 border border-zinc-300 rounded-lg hover:bg-zinc-100 transition-colors"
+              >
+                Fechar
+              </button>
+            </div>
           </div>
         </div>
       )}
