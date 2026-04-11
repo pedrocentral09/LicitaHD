@@ -1,14 +1,29 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
+
+    const dateFilter: any = {};
+    if (startDate || endDate) {
+      dateFilter.purchaseOrder = {
+        issuedAt: {
+          ...(startDate ? { gte: new Date(startDate) } : {}),
+          ...(endDate ? { lte: new Date(endDate + "T23:59:59.999Z") } : {}),
+        },
+      };
+    }
+
     const items = await prisma.purchaseItem.findMany({
       where: {
         costPrice: { not: null },
         active: true,
+        ...dateFilter,
       },
       include: {
         purchaseOrder: {

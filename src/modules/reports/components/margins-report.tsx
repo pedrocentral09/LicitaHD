@@ -17,6 +17,7 @@ import {
   ChevronUp,
   ChevronDown,
   X,
+  CalendarDays,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -184,6 +185,10 @@ export function MarginsReport() {
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortAsc, setSortAsc] = useState(true);
 
+  // Date filter
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
   // Column config
   const [columnOrder, setColumnOrder] = useState<string[]>(DEFAULT_ORDER);
   const [visibleCols, setVisibleCols] = useState<Set<string>>(new Set(DEFAULT_VISIBLE));
@@ -232,10 +237,16 @@ export function MarginsReport() {
     loadReport();
   }, []);
 
-  async function loadReport() {
+  async function loadReport(sDate?: string, eDate?: string) {
     setLoading(true);
     try {
-      const res = await fetch("/api/reports/margins");
+      const params = new URLSearchParams();
+      const sd = sDate ?? startDate;
+      const ed = eDate ?? endDate;
+      if (sd) params.set("startDate", sd);
+      if (ed) params.set("endDate", ed);
+      const qs = params.toString();
+      const res = await fetch(`/api/reports/margins${qs ? `?${qs}` : ""}`);
       const data = await res.json();
       if (Array.isArray(data)) setItems(data);
     } catch (e) {
@@ -623,6 +634,42 @@ export function MarginsReport() {
               />
               <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-zinc-400">%</span>
             </div>
+          </div>
+
+          {/* Date range */}
+          <div className="flex items-center gap-2">
+            <CalendarDays className="w-4 h-4 text-zinc-400" />
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                loadReport(e.target.value, endDate);
+              }}
+              className="text-xs border border-zinc-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+            />
+            <span className="text-xs text-zinc-400">até</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                loadReport(startDate, e.target.value);
+              }}
+              className="text-xs border border-zinc-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+            />
+            {(startDate || endDate) && (
+              <button
+                onClick={() => {
+                  setStartDate("");
+                  setEndDate("");
+                  loadReport("", "");
+                }}
+                className="text-xs text-red-500 hover:text-red-700 font-semibold"
+              >
+                Limpar
+              </button>
+            )}
           </div>
         </div>
       </div>
