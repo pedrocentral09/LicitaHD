@@ -13,6 +13,7 @@ import {
   Clock,
   ArrowUpDown,
   Filter,
+  Undo2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -118,11 +119,29 @@ export default function ContasReceberPage() {
     }
   };
 
-  const markAsPaid = async (id: string) => {
+  const markAsPaid = async (id: string, paidAt?: string) => {
     await fetch(`/api/receivables/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "PAID" }),
+      body: JSON.stringify({ status: "PAID", paidAt: paidAt || undefined }),
+    });
+    fetchReceivables();
+  };
+
+  const revertPayment = async (id: string) => {
+    await fetch(`/api/receivables/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "PENDING" }),
+    });
+    fetchReceivables();
+  };
+
+  const updatePaidAt = async (id: string, paidAt: string) => {
+    await fetch(`/api/receivables/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paidAt }),
     });
     fetchReceivables();
   };
@@ -435,16 +454,48 @@ export default function ContasReceberPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-5 py-4 text-right">
-                        {item.status !== "PAID" && (
-                          <button
-                            onClick={() => markAsPaid(item.id)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg transition-all text-xs font-bold border border-emerald-200 ml-auto"
-                          >
-                            <Check className="h-3.5 w-3.5" />
-                            Recebido
-                          </button>
-                        )}
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-2 justify-end">
+                          {item.status !== "PAID" ? (
+                            <>
+                              <input
+                                type="date"
+                                className="text-[10px] border border-zinc-200 rounded px-1.5 py-1 w-28 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                onChange={(e) => {
+                                  if (e.target.value) markAsPaid(item.id, e.target.value);
+                                }}
+                                title="Escolher data do pagamento"
+                              />
+                              <button
+                                onClick={() => markAsPaid(item.id)}
+                                className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg transition-all text-[10px] font-bold border border-emerald-200"
+                              >
+                                <Check className="h-3 w-3" />
+                                Hoje
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <input
+                                type="date"
+                                className="text-[10px] border border-emerald-200 bg-emerald-50 rounded px-1.5 py-1 w-28 text-emerald-700 font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                defaultValue={item.paidAt ? item.paidAt.slice(0, 10) : ""}
+                                onBlur={(e) => {
+                                  if (e.target.value) updatePaidAt(item.id, e.target.value);
+                                }}
+                                title="Editar data do pagamento"
+                              />
+                              <button
+                                onClick={() => revertPayment(item.id)}
+                                className="flex items-center gap-1 px-2.5 py-1.5 bg-zinc-100 text-zinc-500 hover:bg-red-50 hover:text-red-600 rounded-lg transition-all text-[10px] font-bold border border-zinc-200"
+                                title="Reverter para Pendente"
+                              >
+                                <Undo2 className="h-3 w-3" />
+                                Reverter
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

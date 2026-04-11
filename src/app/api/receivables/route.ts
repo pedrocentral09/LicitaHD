@@ -1,7 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { AccountReceivable } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
+
+type ReceivableRow = AccountReceivable;
 
 export async function GET() {
   try {
@@ -65,7 +68,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    
+
     if (!body.title || !body.amount || !body.dueDate || !body.organizationId) {
       return NextResponse.json({ error: "Preencha os campos obrigatórios." }, { status: 400 });
     }
@@ -77,7 +80,7 @@ export async function POST(req: Request) {
         dueDate: new Date(body.dueDate),
         organizationId: body.organizationId,
         purchaseOrderId: body.purchaseOrderId || null,
-        status: "PENDING"
+        status: "PENDING",
       },
     });
 

@@ -9,9 +9,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const updateData: any = {};
     if (body.status) updateData.status = body.status;
     if (body.status === "PAID") {
-      updateData.paidAt = new Date();
+      updateData.paidAt = body.paidAt ? new Date(body.paidAt) : new Date();
     } else if (body.status === "PENDING" || body.status === "OVERDUE") {
       updateData.paidAt = null;
+    }
+    if (body.paidAt !== undefined && !body.status) {
+      updateData.paidAt = body.paidAt ? new Date(body.paidAt) : null;
+    }
+    if (body.dueDate !== undefined) {
+      updateData.dueDate = new Date(body.dueDate);
     }
 
     const receivable = await prisma.accountReceivable.update({
