@@ -479,48 +479,24 @@ export default function ContasReceberPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-2 justify-end">
-                          {item.status !== "PAID" ? (
-                            <>
-                              <input
-                                type="date"
-                                className="text-[10px] border border-zinc-200 rounded px-1.5 py-1 w-28 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                onChange={(e) => {
-                                  if (e.target.value) markAsPaid(item.id, e.target.value);
-                                }}
-                                title="Escolher data do pagamento"
-                              />
-                              <button
-                                onClick={() => markAsPaid(item.id)}
-                                className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg transition-all text-[10px] font-bold border border-emerald-200"
-                              >
-                                <Check className="h-3 w-3" />
-                                Hoje
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <input
-                                type="date"
-                                className="text-[10px] border border-emerald-200 bg-emerald-50 rounded px-1.5 py-1 w-28 text-emerald-700 font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                defaultValue={item.paidAt ? item.paidAt.slice(0, 10) : ""}
-                                onBlur={(e) => {
-                                  if (e.target.value) updatePaidAt(item.id, e.target.value);
-                                }}
-                                title="Editar data do pagamento"
-                              />
-                              <button
-                                onClick={() => revertPayment(item.id)}
-                                className="flex items-center gap-1 px-2.5 py-1.5 bg-zinc-100 text-zinc-500 hover:bg-red-50 hover:text-red-600 rounded-lg transition-all text-[10px] font-bold border border-zinc-200"
-                                title="Reverter para Pendente"
-                              >
-                                <Undo2 className="h-3 w-3" />
-                                Reverter
-                              </button>
-                            </>
-                          )}
-                        </div>
+                      <td className="px-5 py-4 text-right">
+                        {item.status !== "PAID" ? (
+                          <button
+                            onClick={() => markAsPaid(item.id)}
+                            className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg transition-all text-[10px] font-bold border border-emerald-200 ml-auto"
+                          >
+                            <Check className="h-3 w-3" />
+                            Recebido
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => revertPayment(item.id)}
+                            className="flex items-center gap-1 px-2.5 py-1.5 bg-zinc-100 text-zinc-500 hover:bg-red-50 hover:text-red-600 rounded-lg transition-all text-[10px] font-bold border border-zinc-200 ml-auto"
+                          >
+                            <Undo2 className="h-3 w-3" />
+                            Reverter
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
@@ -824,8 +800,60 @@ export default function ContasReceberPage() {
               )}
             </div>
 
-            {/* Footer */}
-            <div className="border-t border-zinc-200 bg-zinc-50 px-6 py-3 flex justify-end">
+            {/* Footer with Actions */}
+            <div className="border-t border-zinc-200 bg-zinc-50 px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {detailData.status !== "PAID" ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <label className="text-[10px] text-zinc-500 font-medium">Data pgto:</label>
+                      <input
+                        type="date"
+                        id="detail-paid-date"
+                        className="text-xs border border-zinc-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                      />
+                    </div>
+                    <button
+                      onClick={async () => {
+                        const dateInput = document.getElementById("detail-paid-date") as HTMLInputElement;
+                        await markAsPaid(detailData.id, dateInput?.value || undefined);
+                        openDetail(detailData.id);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors shadow-sm"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      Marcar como Recebido
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <label className="text-[10px] text-zinc-500 font-medium">Pago em:</label>
+                      <input
+                        type="date"
+                        defaultValue={detailData.paidAt ? detailData.paidAt.slice(0, 10) : ""}
+                        className="text-xs border border-emerald-300 bg-emerald-50 text-emerald-700 font-medium rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                        onChange={async (e) => {
+                          if (e.target.value) {
+                            await updatePaidAt(detailData.id, e.target.value);
+                            openDetail(detailData.id);
+                          }
+                        }}
+                      />
+                    </div>
+                    <button
+                      onClick={async () => {
+                        await revertPayment(detailData.id);
+                        openDetail(detailData.id);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-200 text-zinc-600 hover:bg-red-50 hover:text-red-600 rounded-lg text-xs font-bold transition-colors border border-zinc-300"
+                    >
+                      <Undo2 className="h-3.5 w-3.5" />
+                      Reverter Pagamento
+                    </button>
+                  </>
+                )}
+              </div>
               <button
                 onClick={() => setDetailData(null)}
                 className="px-4 py-2 text-sm font-medium text-zinc-600 border border-zinc-300 rounded-lg hover:bg-zinc-100 transition-colors"

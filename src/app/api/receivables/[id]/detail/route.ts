@@ -62,7 +62,18 @@ export async function GET(
     let totalCost = 0;
     let totalTax = 0;
 
-    const itemDetails = shipmentItems.map((si) => {
+    const itemDetails: Array<{
+      description: string;
+      quantity: number;
+      unitPrice: number;
+      costPrice: number;
+      taxPercent: number;
+      totalSell: number;
+      totalCostAmount: number;
+      taxAmount: number;
+      profit: number;
+      margin: number;
+    }> = shipmentItems.map((si: any) => {
       const sell = si.quantity * si.purchaseItem.unitPriceReturn;
       const cost = si.quantity * (si.purchaseItem.costPrice || 0);
       const taxPct = si.purchaseItem.taxPercent || 0;
@@ -90,7 +101,7 @@ export async function GET(
 
     // If no shipment, calculate from OC items
     if (itemDetails.length === 0 && receivable.purchaseOrder) {
-      receivable.purchaseOrder.items.forEach((item) => {
+      receivable.purchaseOrder.items.forEach((item: any) => {
         const sell = item.quantity * item.unitPriceReturn;
         const cost = item.quantity * (item.costPrice || 0);
         const taxPct = item.taxPercent || 0;
