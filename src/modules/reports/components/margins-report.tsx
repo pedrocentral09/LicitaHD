@@ -59,7 +59,7 @@ const ALL_COLUMNS: ColumnDef[] = [
     sortField: "description",
     width: "auto",
     render: (item) => (
-      <span className="font-medium text-zinc-800 block text-xs leading-snug" title={item.description}>
+      <span className="font-medium text-zinc-800 block text-xs leading-snug line-clamp-2" title={item.description}>
         {item.description}
       </span>
     ),
@@ -70,7 +70,7 @@ const ALL_COLUMNS: ColumnDef[] = [
     sortField: "orgName",
     width: "auto",
     render: (item) => (
-      <span className="text-zinc-600 text-xs leading-snug block" title={item.orgName}>
+      <span className="text-zinc-600 text-xs leading-snug block line-clamp-2" title={item.orgName}>
         {item.orgName}
       </span>
     ),
