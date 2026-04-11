@@ -42,6 +42,7 @@ model Organization {
   purchaseOrders    PurchaseOrder[]
   procurementGroups ProcurementGroup[]
   accountReceivables AccountReceivable[]
+  accountPayables    AccountPayable[]
 }
 
 // -------------------------------------------------------------
@@ -72,6 +73,7 @@ model PurchaseOrder {
   items PurchaseItem[]
   shipments Shipment[]
   accountReceivables AccountReceivable[]
+  accountPayables    AccountPayable[]
 
   @@unique([organizationId, documentNumber])
 }
@@ -164,6 +166,36 @@ model AccountReceivable {
 }
 
 enum ReceivableStatus {
+  PENDING
+  PAID
+  OVERDUE
+}
+
+// -------------------------------------------------------------
+// Módulo: Financeiro (Contas a Pagar)
+// -------------------------------------------------------------
+model AccountPayable {
+  id          String   @id @default(uuid())
+  title       String
+  amount      Float
+  dueDate     DateTime
+  paidAt      DateTime?
+  status      PayableStatus @default(PENDING)
+  supplier    String?
+  category    String   @default("MERCADORIA")
+  notes       String?
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  purchaseOrderId String?
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum PayableStatus {
   PENDING
   PAID
   OVERDUE

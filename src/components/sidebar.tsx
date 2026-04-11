@@ -79,7 +79,13 @@ const navCategories = [
       {
         label: "Contas a Receber",
         href: "/contas-receber",
-        icon: FileText, // TODO: Update to an appropriate icon like DollarSign or Wallet if available, but FileText is fine
+        icon: FileText,
+        roles: ["GOD", "OPERATOR", "BUYER"]
+      },
+      {
+        label: "Contas a Pagar",
+        href: "/contas-pagar",
+        icon: FileText,
         roles: ["GOD", "OPERATOR", "BUYER"]
       },
       {
