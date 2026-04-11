@@ -48,6 +48,7 @@ interface ColumnDef {
   shortLabel?: string;
   sortField?: SortField;
   align?: "left" | "right" | "center";
+  width?: string;
   render: (item: MarginItem) => ReactNode;
 }
 
@@ -56,8 +57,9 @@ const ALL_COLUMNS: ColumnDef[] = [
     id: "description",
     label: "Descrição",
     sortField: "description",
+    width: "auto",
     render: (item) => (
-      <span className="font-medium text-zinc-800 max-w-[250px] truncate block" title={item.description}>
+      <span className="font-medium text-zinc-800 block text-xs leading-snug" title={item.description}>
         {item.description}
       </span>
     ),
@@ -66,8 +68,9 @@ const ALL_COLUMNS: ColumnDef[] = [
     id: "orgName",
     label: "Órgão",
     sortField: "orgName",
+    width: "auto",
     render: (item) => (
-      <span className="text-zinc-500 text-xs max-w-[150px] truncate block" title={item.orgName}>
+      <span className="text-zinc-600 text-xs leading-snug block" title={item.orgName}>
         {item.orgName}
       </span>
     ),
@@ -76,47 +79,54 @@ const ALL_COLUMNS: ColumnDef[] = [
     id: "ocNumber",
     label: "OC",
     sortField: "ocNumber",
+    width: "70px",
     render: (item) => <span className="text-zinc-600 font-mono text-xs">{item.ocNumber}</span>,
   },
   {
     id: "quantity",
     label: "Qtd",
-    render: (item) => <span className="text-zinc-600">{item.quantity}</span>,
+    width: "50px",
+    align: "right",
+    render: (item) => <span className="text-zinc-600 text-xs">{item.quantity}</span>,
   },
   {
     id: "unitPrice",
-    label: "Venda (R$)",
+    label: "Venda",
     shortLabel: "Venda",
     align: "right",
+    width: "85px",
     render: (item) => (
-      <span className="text-zinc-700">{item.unitPriceReturn.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+      <span className="text-zinc-700 text-xs">{item.unitPriceReturn.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
     ),
   },
   {
     id: "costPrice",
-    label: "Custo (R$)",
+    label: "Custo",
     shortLabel: "Custo",
     align: "right",
+    width: "85px",
     render: (item) => (
-      <span className="text-zinc-700">{item.costPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+      <span className="text-zinc-700 text-xs">{item.costPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
     ),
   },
   {
     id: "taxPercent",
-    label: "Imposto %",
+    label: "Imp%",
     shortLabel: "Imp%",
     align: "right",
-    render: (item) => <span className="text-zinc-500">{item.taxPercent.toFixed(1)}%</span>,
+    width: "55px",
+    render: (item) => <span className="text-zinc-500 text-xs">{item.taxPercent.toFixed(1)}%</span>,
   },
   {
     id: "margin",
-    label: "Margem %",
+    label: "Margem",
     sortField: "margin",
     align: "right",
+    width: "80px",
     render: (item) => (
       <span
         className={cn(
-          "inline-flex items-center px-2 py-0.5 rounded text-xs font-bold",
+          "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold",
           item.margin >= 15
             ? "bg-emerald-100 text-emerald-700"
             : item.margin >= 5
@@ -132,10 +142,11 @@ const ALL_COLUMNS: ColumnDef[] = [
   },
   {
     id: "profit",
-    label: "Lucro (R$)",
+    label: "Lucro",
     shortLabel: "Lucro",
     sortField: "profit",
     align: "right",
+    width: "95px",
     render: (item) => (
       <span className={cn("font-bold text-xs", item.profit >= 0 ? "text-emerald-600" : "text-red-600")}>
         {item.profit >= 0 ? "+" : ""}
@@ -147,15 +158,16 @@ const ALL_COLUMNS: ColumnDef[] = [
     id: "signal",
     label: "Sinal",
     align: "center",
+    width: "45px",
     render: (item) =>
       item.margin >= 15 ? (
-        <CheckCircle className="w-4 h-4 text-emerald-500 mx-auto" />
+        <CheckCircle className="w-3.5 h-3.5 text-emerald-500 mx-auto" />
       ) : item.margin >= 5 ? (
-        <TrendingUp className="w-4 h-4 text-amber-500 mx-auto" />
+        <TrendingUp className="w-3.5 h-3.5 text-amber-500 mx-auto" />
       ) : item.margin >= 0 ? (
-        <MinusCircle className="w-4 h-4 text-orange-500 mx-auto" />
+        <MinusCircle className="w-3.5 h-3.5 text-orange-500 mx-auto" />
       ) : (
-        <TrendingDown className="w-4 h-4 text-red-500 mx-auto" />
+        <TrendingDown className="w-3.5 h-3.5 text-red-500 mx-auto" />
       ),
   },
 ];
@@ -579,7 +591,7 @@ export function MarginsReport() {
       {/* Table — dynamic columns */}
       <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left min-w-[700px]">
+          <table className="w-full text-sm text-left" style={{ tableLayout: 'fixed' }}>
             <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-medium text-xs">
               <tr>
                 {activeColumns.map((col) => {
@@ -587,6 +599,7 @@ export function MarginsReport() {
                   return (
                     <th
                       key={col.id}
+                      style={{ width: col.width || 'auto' }}
                       className={cn(
                         "px-3 py-3 select-none",
                         col.align === "right" && "text-right",
