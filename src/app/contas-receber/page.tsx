@@ -165,6 +165,16 @@ export default function ContasReceberPage() {
     setDetailLoading(false);
   };
 
+  const saveReceivable = async (id: string, fields: Record<string, any>) => {
+    await fetch(`/api/receivables/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(fields),
+    });
+    fetchReceivables();
+    openDetail(id);
+  };
+
   const fmt = (val: number) =>
     new Intl.NumberFormat("pt-BR", {
       style: "currency",
@@ -686,32 +696,71 @@ export default function ContasReceberPage() {
                 </div>
               )}
 
-              {/* Document Info */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <p className="text-[10px] text-zinc-400 font-medium">Valor da Cobrança</p>
-                  <p className="font-bold text-zinc-900">{fmt(detailData.amount)}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-zinc-400 font-medium">Vencimento</p>
-                  <p className="font-bold text-zinc-900">{fmtDate(detailData.dueDate)}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-zinc-400 font-medium">Status</p>
-                  <span className={cn(
-                    "inline-block px-2 py-0.5 rounded-full text-[10px] font-bold mt-0.5",
-                    detailData.status === "PAID" && "bg-emerald-100 text-emerald-700",
-                    detailData.status === "PENDING" && "bg-amber-100 text-amber-700",
-                    detailData.status === "OVERDUE" && "bg-red-100 text-red-700"
-                  )}>
-                    {detailData.status === "PAID" ? "PAGO" : detailData.status === "PENDING" ? "PENDENTE" : "ATRASADO"}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-[10px] text-zinc-400 font-medium">NF-e Vinculada</p>
-                  <p className="font-bold text-zinc-900">
-                    {detailData.shipment?.invoiceNumber || "—"}
-                  </p>
+              {/* Document Info — Editable Fields */}
+              <div className="bg-white rounded-lg border border-zinc-200 p-4">
+                <h4 className="text-xs font-bold text-zinc-500 mb-3 uppercase tracking-wide">Dados do Documento</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <label className="text-[10px] text-zinc-400 font-medium">Título / Referência</label>
+                    <input
+                      type="text"
+                      defaultValue={detailData.title}
+                      id="edit-title"
+                      className="w-full mt-0.5 text-sm font-medium text-zinc-900 border border-zinc-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-zinc-400 font-medium">Valor (R$)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      defaultValue={detailData.amount}
+                      id="edit-amount"
+                      className="w-full mt-0.5 text-sm font-bold text-zinc-900 border border-zinc-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-zinc-400 font-medium">Vencimento</label>
+                    <input
+                      type="date"
+                      defaultValue={detailData.dueDate?.slice(0, 10)}
+                      id="edit-due-date"
+                      className="w-full mt-0.5 text-sm text-zinc-900 border border-zinc-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-zinc-400 font-medium">Data de Recebimento</label>
+                    <input
+                      type="date"
+                      defaultValue={detailData.paidAt?.slice(0, 10) || ""}
+                      id="edit-paid-at"
+                      className={cn(
+                        "w-full mt-0.5 text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500",
+                        detailData.status === "PAID"
+                          ? "border-emerald-300 bg-emerald-50 text-emerald-700 font-medium"
+                          : "border-zinc-200 text-zinc-900"
+                      )}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-zinc-400 font-medium">Status</label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={cn(
+                        "px-2.5 py-1 rounded-full text-[10px] font-bold",
+                        detailData.status === "PAID" && "bg-emerald-100 text-emerald-700",
+                        detailData.status === "PENDING" && "bg-amber-100 text-amber-700",
+                        detailData.status === "OVERDUE" && "bg-red-100 text-red-700"
+                      )}>
+                        {detailData.status === "PAID" ? "PAGO" : detailData.status === "PENDING" ? "PENDENTE" : "ATRASADO"}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-zinc-400 font-medium">NF-e Vinculada</label>
+                    <p className="font-bold text-zinc-900 mt-1">
+                      {detailData.shipment?.invoiceNumber || "—"}
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -802,64 +851,65 @@ export default function ContasReceberPage() {
 
             {/* Footer with Actions */}
             <div className="border-t border-zinc-200 bg-zinc-50 px-6 py-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 {detailData.status !== "PAID" ? (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <label className="text-[10px] text-zinc-500 font-medium">Data pgto:</label>
-                      <input
-                        type="date"
-                        id="detail-paid-date"
-                        className="text-xs border border-zinc-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                      />
-                    </div>
-                    <button
-                      onClick={async () => {
-                        const dateInput = document.getElementById("detail-paid-date") as HTMLInputElement;
-                        await markAsPaid(detailData.id, dateInput?.value || undefined);
-                        openDetail(detailData.id);
-                      }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors shadow-sm"
-                    >
-                      <Check className="h-3.5 w-3.5" />
-                      Marcar como Recebido
-                    </button>
-                  </>
+                  <button
+                    onClick={async () => {
+                      const paidAt = (document.getElementById("edit-paid-at") as HTMLInputElement)?.value;
+                      await markAsPaid(detailData.id, paidAt || undefined);
+                      openDetail(detailData.id);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors shadow-sm"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                    Marcar como Recebido
+                  </button>
                 ) : (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <label className="text-[10px] text-zinc-500 font-medium">Pago em:</label>
-                      <input
-                        type="date"
-                        defaultValue={detailData.paidAt ? detailData.paidAt.slice(0, 10) : ""}
-                        className="text-xs border border-emerald-300 bg-emerald-50 text-emerald-700 font-medium rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                        onChange={async (e) => {
-                          if (e.target.value) {
-                            await updatePaidAt(detailData.id, e.target.value);
-                            openDetail(detailData.id);
-                          }
-                        }}
-                      />
-                    </div>
-                    <button
-                      onClick={async () => {
-                        await revertPayment(detailData.id);
-                        openDetail(detailData.id);
-                      }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-200 text-zinc-600 hover:bg-red-50 hover:text-red-600 rounded-lg text-xs font-bold transition-colors border border-zinc-300"
-                    >
-                      <Undo2 className="h-3.5 w-3.5" />
-                      Reverter Pagamento
-                    </button>
-                  </>
+                  <button
+                    onClick={async () => {
+                      await revertPayment(detailData.id);
+                      openDetail(detailData.id);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-200 text-zinc-600 hover:bg-red-50 hover:text-red-600 rounded-lg text-xs font-bold transition-colors border border-zinc-300"
+                  >
+                    <Undo2 className="h-3.5 w-3.5" />
+                    Reverter Pagamento
+                  </button>
                 )}
               </div>
-              <button
-                onClick={() => setDetailData(null)}
-                className="px-4 py-2 text-sm font-medium text-zinc-600 border border-zinc-300 rounded-lg hover:bg-zinc-100 transition-colors"
-              >
-                Fechar
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setDetailData(null)}
+                  className="px-4 py-2 text-sm font-medium text-zinc-600 border border-zinc-300 rounded-lg hover:bg-zinc-100 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={async () => {
+                    const newTitle = (document.getElementById("edit-title") as HTMLInputElement)?.value;
+                    const newAmount = (document.getElementById("edit-amount") as HTMLInputElement)?.value;
+                    const newDueDate = (document.getElementById("edit-due-date") as HTMLInputElement)?.value;
+                    const newPaidAt = (document.getElementById("edit-paid-at") as HTMLInputElement)?.value;
+
+                    const fields: Record<string, any> = {};
+                    if (newTitle && newTitle !== detailData.title) fields.title = newTitle;
+                    if (newAmount && parseFloat(newAmount) !== detailData.amount) fields.amount = parseFloat(newAmount);
+                    if (newDueDate) fields.dueDate = newDueDate;
+                    if (newPaidAt) fields.paidAt = newPaidAt;
+                    else if (!newPaidAt && detailData.paidAt) fields.paidAt = null;
+
+                    if (Object.keys(fields).length > 0) {
+                      await saveReceivable(detailData.id, fields);
+                    } else {
+                      setDetailData(null);
+                    }
+                  }}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition-colors shadow-sm"
+                >
+                  <Check className="h-4 w-4" />
+                  Salvar Alterações
+                </button>
+              </div>
             </div>
           </div>
         </div>

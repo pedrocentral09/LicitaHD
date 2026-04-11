@@ -7,6 +7,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const body = await req.json();
 
     const updateData: any = {};
+    if (body.title !== undefined) updateData.title = body.title;
+    if (body.amount !== undefined) updateData.amount = parseFloat(body.amount);
     if (body.status) updateData.status = body.status;
     if (body.status === "PAID") {
       updateData.paidAt = body.paidAt ? new Date(body.paidAt) : new Date();
