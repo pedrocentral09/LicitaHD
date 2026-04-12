@@ -183,6 +183,8 @@ model AccountReceivable {
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  bankTransaction BankTransaction?
 }
 
 enum ReceivableStatus {
@@ -216,6 +218,8 @@ model AccountPayable {
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  bankTransaction BankTransaction?
 }
 
 enum PayableStatus {
@@ -260,4 +264,54 @@ model ShipmentItem {
 
   purchaseItemId String
   purchaseItem   PurchaseItem @relation(fields: [purchaseItemId], references: [id])
+}
+
+// -------------------------------------------------------------
+// Módulo: Tesouraria e Conciliação Bancária (OFX)
+// -------------------------------------------------------------
+model BankAccount {
+  id            String   @id @default(uuid())
+  bankName      String
+  agency        String?
+  account       String
+  accountName   String
+  balance       Float    @default(0)
+  
+  transactions  BankTransaction[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model BankTransaction {
+  id              String   @id @default(uuid())
+  fitId           String   @unique // Hash/Id da transação no OFX para não duplicar
+  type            TransactionType
+  amount          Float
+  date            DateTime // Data extraída do documento bancário
+  description     String   // "TED XY", "PIX AB", "TARIFA"
+  
+  bankAccountId   String
+  bankAccount     BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+
+  // Links da conciliação feita no front (se aplicável)
+  accountPayableId    String?  @unique
+  accountPayable      AccountPayable? @relation(fields: [accountPayableId], references: [id])
+  
+  accountReceivableId String?  @unique
+  accountReceivable   AccountReceivable? @relation(fields: [accountReceivableId], references: [id])
+
+  status          ReconciliationStatus @default(PENDING)
+
+  createdAt       DateTime @default(now())
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+}
+
+enum ReconciliationStatus {
+  PENDING
+  RECONCILED
 }

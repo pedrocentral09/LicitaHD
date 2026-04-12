@@ -17,7 +17,8 @@ import {
   Users,
   Database,
   BarChart3,
-  FolderTree
+  FolderTree,
+  Landmark
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -114,6 +115,12 @@ const navCategories = [
         href: "/centros-custo",
         icon: FolderTree,
         roles: ["GOD", "OPERATOR"]
+      },
+      {
+        label: "Tesouraria (OFX)",
+        href: "/contas-correntes",
+        icon: Landmark,
+        roles: ["GOD", "OPERATOR", "BUYER", "LOGISTICS"]
       },
     ]
   },
