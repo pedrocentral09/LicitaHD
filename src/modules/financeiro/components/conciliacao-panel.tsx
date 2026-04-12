@@ -13,17 +13,34 @@ export function ReconciliationPanel({ bankId }: { bankId: string }) {
   const [uploading, setUploading] = useState(false);
   const [reconciling, setReconciling] = useState(false);
   const [uploadMessage, setUploadMessage] = useState("");
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createCategory, setCreateCategory] = useState("TARIFA");
+  const [createSupplier, setCreateSupplier] = useState("");
+  const [createOrgId, setCreateOrgId] = useState("");
+  const [createCcId, setCreateCcId] = useState("");
+  const [createOrderId, setCreateOrderId] = useState("");
+  const [createTypeMode, setCreateTypeMode] = useState<"PAYABLE"|"RECEIVABLE">("PAYABLE");
+
+  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [costCenters, setCostCenters] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
 
   async function loadData() {
     // Carregar transações OFX PENDENTES
     // Vamos precisar também criar um GET rápido nessas sub-rotas ou usamos banco
-    const [txRes, payRes, recRes] = await Promise.all([
+    const [txRes, payRes, recRes, orgRes, ccRes, ordRes] = await Promise.all([
       fetch(`/api/financeiro/banks/${bankId}/transactions`),
       fetch("/api/financeiro/payables"),
-      fetch("/api/financeiro/receivables")
+      fetch("/api/financeiro/receivables"),
+      fetch("/api/organizations"),
+      fetch("/api/cost-centers"),
+      fetch("/api/orders")
     ]);
     
     if (txRes.ok) setTransactions(await txRes.json());
+    if (orgRes.ok) setOrganizations(await orgRes.json());
+    if (ccRes.ok) setCostCenters(await ccRes.json());
+    if (ordRes.ok) setOrders(await ordRes.json());
     if (payRes.ok) {
       const p = await payRes.json();
       setPayables(p.filter((x: any) => x.status !== "PAID")); // Only open
@@ -92,6 +109,54 @@ export function ReconciliationPanel({ bankId }: { bankId: string }) {
       setReconciling(false);
     }
   }
+
+  async function handleQuickCreate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedTx) return;
+    setReconciling(true);
+
+    try {
+      // 1. Cria a Conta A Pagar / Receber
+      const endpoint = createTypeMode === "PAYABLE" ? "/api/financeiro/payables" : "/api/financeiro/receivables";
+      const createRes = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: selectedTx.description,
+          amount: selectedTx.amount, // Exata
+          dueDate: selectedTx.date, // Exata
+          category: createCategory,
+          supplier: createTypeMode === "PAYABLE" ? createSupplier : undefined,
+          organizationId: createOrgId || undefined,
+          costCenterId: createCcId || undefined,
+          purchaseOrderId: createOrderId || undefined
+        })
+      });
+      const createData = await createRes.json();
+      
+      if (!createRes.ok) {
+        alert("Erro ao criar: " + createData.error);
+        setReconciling(false);
+        return;
+      }
+
+      // 2. Concilia com o ID gerado
+      await handleReconcile(createData.id, createTypeMode);
+      
+      setShowCreateModal(false);
+
+    } catch (err) {
+      alert("Erro na criação relâmpago.");
+      setReconciling(false);
+    }
+  }
+
+  // Pre-fill type when selecting a transaction
+  useEffect(() => {
+    if (selectedTx) {
+      setCreateTypeMode(selectedTx.type === "DEBIT" ? "PAYABLE" : "RECEIVABLE");
+    }
+  }, [selectedTx]);
 
   const formatBRL = (val: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
 
@@ -229,15 +294,108 @@ export function ReconciliationPanel({ bankId }: { bankId: string }) {
                 {/* Outros Títulos Manuais (se não for Match exato) */}
                 <div>
                   <h4 className="text-xs font-bold text-zinc-500 mb-3">Busca Manual (Valores Diferentes)</h4>
-                  <p className="text-xs text-red-500 bg-red-50 p-2 rounded border border-red-100">
+                  <p className="text-xs text-red-500 bg-red-50 p-2 rounded border border-red-100 mb-4">
                     Aviso de Segurança: O sistema travou a liquidação manual por valores divergentes nesta versão para garantir o centavo a centavo. Crie primeiro uma "Tarifa" em A Pagar para ajustar a diferença de deságio.
                   </p>
+                  
+                  <button 
+                    onClick={() => setShowCreateModal(true)}
+                    className="w-full mt-4 py-3 border border-dashed border-zinc-300 rounded-xl text-zinc-600 font-medium hover:bg-indigo-50 hover:border-indigo-300 transition-colors"
+                  >
+                    Abrir Criador Rápido de Título (Conciliação Exata)
+                  </button>
                 </div>
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {showCreateModal && selectedTx && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/50 backdrop-blur-sm overflow-y-auto">
+          <form onSubmit={handleQuickCreate} className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-full">
+            <div className="p-6 border-b border-zinc-200 bg-zinc-50 flex justify-between items-center shrink-0">
+              <div>
+                <h3 className="text-lg font-bold text-zinc-900">Criar Novo Título para Conciliação</h3>
+                <p className="text-sm text-zinc-500 mt-1">
+                  Transação Original: <span className="font-mono bg-zinc-200 px-1 rounded">{selectedTx.description}</span>
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-zinc-500 font-bold mb-1">Cravado da Transação</p>
+                <p className={`text-xl font-bold bg-zinc-100 px-3 py-1 rounded inline-block ${selectedTx.type === "CREDIT" ? "text-emerald-600" : "text-red-600"}`}>
+                  {formatBRL(selectedTx.amount)}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1 space-y-5">
+              <div className="flex bg-zinc-100 p-1 rounded-lg">
+                <button type="button" onClick={() => setCreateTypeMode("PAYABLE")} className={`flex-1 py-2 text-sm font-bold rounded-md ${createTypeMode === "PAYABLE" ? "bg-white text-zinc-900 shadow" : "text-zinc-500 hover:text-zinc-700"}`}>
+                  Contas a Pagar (Despesa)
+                </button>
+                <button type="button" onClick={() => setCreateTypeMode("RECEIVABLE")} className={`flex-1 py-2 text-sm font-bold rounded-md ${createTypeMode === "RECEIVABLE" ? "bg-white text-zinc-900 shadow" : "text-zinc-500 hover:text-zinc-700"}`}>
+                  Contas a Receber (Receita)
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-zinc-700 mb-1">Título / Histórico do Lançamento Oficial</label>
+                  <input type="text" readOnly value={selectedTx.description} className="w-full text-sm p-3 rounded-lg border border-zinc-300 bg-black/5 text-zinc-600 font-medium" />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-zinc-700 mb-1">Órgão / Cliente Relacionado</label>
+                  <select value={createOrgId} onChange={e => setCreateOrgId(e.target.value)} required={createTypeMode === "RECEIVABLE"} className="w-full text-sm p-3 rounded-lg border border-zinc-300 focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                    <option value="">Nenhum / Uso Geral</option>
+                    {organizations.map(org => (
+                      <option key={org.id} value={org.id}>{org.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-zinc-700 mb-1">Centro de Custo</label>
+                  <select value={createCcId} onChange={e => setCreateCcId(e.target.value)} className="w-full text-sm p-3 rounded-lg border border-zinc-300 focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                    <option value="">Nenhum</option>
+                    {costCenters.map(cc => (
+                      <option key={cc.id} value={cc.id}>{cc.code} - {cc.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-zinc-700 mb-1">Vincular a Ordem de Compra</label>
+                  <select value={createOrderId} onChange={e => setCreateOrderId(e.target.value)} className="w-full text-sm p-3 rounded-lg border border-zinc-300 focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                    <option value="">Acréscimo Geral</option>
+                    {orders.map(o => (
+                      <option key={o.id} value={o.id}>OF Nº {o.documentNumber || "S/N"} (Emissão: {new Date(o.createdAt).toLocaleDateString()})</option>
+                    ))}
+                  </select>
+                </div>
+
+                {createTypeMode === "PAYABLE" && (
+                  <div className="col-span-2">
+                    <label className="block text-xs font-bold text-zinc-700 mb-1">Fornecedor ou Favorecido (Opcional)</label>
+                    <input type="text" value={createSupplier} onChange={e => setCreateSupplier(e.target.value)} placeholder="Nome do destinatário do TED/PIX/Boleto" className="w-full text-sm p-3 rounded-lg border border-zinc-300 focus:ring-2 focus:ring-indigo-500 outline-none transition-all" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-zinc-200 bg-zinc-50 flex gap-3 shrink-0">
+              <button type="button" onClick={() => setShowCreateModal(false)} className="px-6 py-3 bg-white text-zinc-700 border border-zinc-300 rounded-xl text-sm font-bold hover:bg-zinc-100 transition-colors">
+                Cancelar
+              </button>
+              <button type="submit" disabled={reconciling} className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all flex items-center justify-center gap-2">
+                {reconciling && <span className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full" />}
+                {reconciling ? "Processando Conciliação Instantânea..." : `Gerar ${createTypeMode === "PAYABLE" ? "A Pagar" : "A Receber"} & Conciliar`}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import ofxParser from "node-ofx-parser"; // will use TS declare module
 
 export async function POST(
   req: Request,
@@ -22,70 +21,72 @@ export async function POST(
       return NextResponse.json({ error: "No OFX file uploaded" }, { status: 400 });
     }
 
-    const fileText = await file.text();
+    let fileText = await file.text();
     
-    // Parando o OFX
-    const data = ofxParser.parse(fileText);
+    // OFX Sanitization for Brazilian Banks
+    fileText = fileText.replace(/^\uFEFF/, "");
     
-    // OFX nodes can be tricky depending on the bank. Usually:
-    // data.OFX.BANKMSGSRSV1.STMTTRNRS.STMTRS.BANKTRANLIST.STMTTRN
-    const stmtTrnRs = data?.OFX?.BANKMSGSRSV1?.STMTTRNRS;
-    if (!stmtTrnRs) {
-      return NextResponse.json({ error: "Invalid or unsupported OFX format (missing STMTTRNRS)" }, { status: 400 });
-    }
-
-    let stmtTrn = stmtTrnRs.STMTRS?.BANKTRANLIST?.STMTTRN;
-    if (!stmtTrn) {
-      return NextResponse.json({ error: "No transactions found in OFX file" }, { status: 400 });
-    }
-
-    // Force array if there's only one transaction
-    if (!Array.isArray(stmtTrn)) {
-      stmtTrn = [stmtTrn];
+    // Ao invés da biblioteca que quebra em SGMLs sujos, extraímos direto via Regex seguro
+    const stmtTrnBlocks = fileText.split(/<STMTTRN>/i).slice(1);
+    
+    if (stmtTrnBlocks.length === 0) {
+      return NextResponse.json({ error: "No transactions (<STMTTRN>) found in OFX file" }, { status: 400 });
     }
 
     let importedCount = 0;
     
-    for (const trx of stmtTrn) {
-      const amount = parseFloat(trx.TRNAMT);
-      const fitId = trx.FITID;
-      const memo = trx.MEMO || trx.NAME || "Sem descrição";
+    const getTag = (block: string, tag: string) => {
+      const regex = new RegExp(`<${tag}>([^<\\n\\r]+)`, 'i');
+      const match = block.match(regex);
+      return match ? match[1].trim() : null;
+    };
+
+    const transactionsToInsert: any[] = [];
+
+    for (const block of stmtTrnBlocks) {
+      const amtStr = getTag(block, 'TRNAMT');
+      if (!amtStr) continue;
+
+      const fitId = getTag(block, 'FITID') || `GEN_${Date.now()}_${Math.random()}`;
+      const memo = getTag(block, 'MEMO') || getTag(block, 'NAME') || "Sem descrição";
+      const dtPosted = getTag(block, 'DTPOSTED');
       
-      // OFX dates are format YYYYMMDDHHMMSS or similar (e.g. 20240902120000[-3:BRT])
-      const dateStr = trx.DTPOSTED; 
+      const amount = parseFloat(amtStr);
       let date = new Date();
-      if (dateStr && dateStr.length >= 8) {
-        const year = parseInt(dateStr.substring(0, 4));
-        const month = parseInt(dateStr.substring(4, 6)) - 1;
-        const day = parseInt(dateStr.substring(6, 8));
+      if (dtPosted && dtPosted.length >= 8) {
+        const year = parseInt(dtPosted.substring(0, 4));
+        const month = parseInt(dtPosted.substring(4, 6)) - 1;
+        const day = parseInt(dtPosted.substring(6, 8));
         date = new Date(year, month, day);
       }
 
       const type = amount >= 0 ? "CREDIT" : "DEBIT";
 
-      // Upsert by fitId to prevent duplicates
-      await prisma.bankTransaction.upsert({
-        where: { fitId },
-        update: {}, // if exists, do nothing
-        create: {
-          fitId,
-          type,
-          amount: Math.abs(amount),
-          date,
-          description: memo,
-          bankAccountId: id,
-          status: "PENDING"
-        }
+      transactionsToInsert.push({
+        fitId,
+        type,
+        amount: Math.abs(amount),
+        date,
+        description: memo,
+        bankAccountId: id,
+        status: "PENDING"
       });
       importedCount++;
     }
 
-    // Update real balance if specified in OFX (data.OFX.BANKMSGSRSV1.STMTTRNRS.STMTRS.LEDGERBAL.BALAMT)
-    const ledgerBal = stmtTrnRs.STMTRS?.LEDGERBAL?.BALAMT;
-    if (ledgerBal) {
+    if (transactionsToInsert.length > 0) {
+      await prisma.bankTransaction.createMany({
+        data: transactionsToInsert,
+        skipDuplicates: true
+      });
+    }
+
+    // Tentar atualizar o saldo se tiver a flag de saldo atual do banco (LEDGERBAL)
+    const balAmtMatch = fileText.match(/<LEDGERBAL>[\s\S]*?<BALAMT>([^<\n\r]+)/i);
+    if (balAmtMatch) {
       await prisma.bankAccount.update({
         where: { id },
-        data: { balance: parseFloat(ledgerBal) }
+        data: { balance: parseFloat(balAmtMatch[1]) }
       });
     }
 
